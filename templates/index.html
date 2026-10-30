@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✦ GPU P2P 部署助手</title>
+<style>
+:root{
+  --bg0:#0a0e1c; --bg1:#131c36;
+  --panel:rgba(24,32,58,.78); --panel2:rgba(30,40,72,.65);
+  --gold:#d3bc8e; --gold-hi:#ecd8a6; --gold-dim:#9a8763;
+  --line:rgba(211,188,142,.30); --line-soft:rgba(211,188,142,.15);
+  --txt:#dfe6f5; --txt-dim:#8b96b5;
+  --teal:#5ad6c8; --purple:#a78bfa; --orange:#f0a35c; --red:#e57373; --green:#6fce95; --blue:#6aa5f8;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  color:var(--txt);
+  background:
+    radial-gradient(1100px 700px at 75% -10%, #1c2c58 0%, transparent 60%),
+    radial-gradient(900px 600px at -10% 30%, #17214245 0%, transparent 55%),
+    var(--bg0);
+  min-height:100vh; overflow-x:hidden;
+}
+/* 星尘背景 */
+#stars{position:fixed;inset:0;pointer-events:none;z-index:0}
+.star{position:absolute;border-radius:50%;background:#fff;opacity:.5;animation:tw 4s ease-in-out infinite}
+@keyframes tw{0%,100%{opacity:.15}50%{opacity:.75}}
+.wrap{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:22px 20px 40px}
+
+/* ============ 标题 ============ */
+.divider{display:flex;align-items:center;gap:12px;color:var(--gold);margin:10px 0}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--line))}
+.divider::after{background:linear-gradient(90deg,var(--line),transparent)}
+.divider .dm{font-size:10px}
+header{display:flex;align-items:center;justify-content:space-between;padding:6px 4px 14px}
+h1.title{
+  font-family:"Noto Serif SC","Source Han Serif SC","STZhongsong","SimSun",serif;
+  font-size:26px;letter-spacing:3px;font-weight:700;
+  background:linear-gradient(180deg,#f4e6bf 15%,#d3bc8e 55%,#a08b5f 90%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  text-shadow:0 2px 18px rgba(211,188,142,.18);
+  display:flex;align-items:center;gap:12px;
+}
+h1 .gem{font-size:15px;-webkit-text-fill-color:var(--gold);text-shadow:0 0 12px rgba(236,216,166,.8);animation:gemspin 6s linear infinite;display:inline-block}
+@keyframes gemspin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+
+/* ============ 卡片 ============ */
+.card{
+  position:relative;border-radius:14px;border:1px solid var(--line);
+  background:linear-gradient(160deg,rgba(40,52,92,.75),rgba(17,25,49,.92));
+  box-shadow:0 10px 28px rgba(0,0,0,.45), inset 0 1px 0 rgba(236,216,166,.22);
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.card:hover{transform:translateY(-2px);border-color:rgba(236,216,166,.5);
+  box-shadow:0 14px 34px rgba(0,0,0,.5), 0 0 18px rgba(211,188,142,.12), inset 0 1px 0 rgba(236,216,166,.3)}
+.card .shine{position:absolute;inset:0;border-radius:14px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(236,216,166,.10),transparent 28%)}
+.dia{position:absolute;width:7px;height:7px;background:var(--gold);transform:rotate(45deg);opacity:.85;box-shadow:0 0 6px rgba(236,216,166,.7)}
+.dia.tl{top:-4px;left:-4px}.dia.tr{top:-4px;right:-4px}.dia.bl{bottom:-4px;left:-4px}.dia.br{bottom:-4px;right:-4px}
+
+/* ============ 连接面板 ============ */
+.conn{padding:16px 18px;margin-bottom:16px}
+.conn .grid{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label{font-size:12px;color:var(--gold);letter-spacing:1px}
+.fld input,.fld select{
+  background:rgba(10,15,30,.7);border:1px solid var(--line);border-radius:8px;color:var(--txt);
+  padding:8px 12px;font-size:13px;min-width:130px;outline:none;transition:border .15s, box-shadow .15s}
+.fld input:focus,.fld select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(211,188,142,.15)}
+.fld input[type=radio],.fld input[type=checkbox]{min-width:unset;accent-color:var(--gold)}
+.radio-row{display:flex;gap:14px;align-items:center;padding:7px 2px;font-size:13px;color:var(--txt)}
+.radio-row label{display:flex;gap:5px;align-items:center;cursor:pointer;color:var(--txt)}
+
+/* ============ 按钮 ============ */
+.btn{
+  clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,10px 100%,0 50%);
+  border:none;cursor:pointer;font-weight:700;font-size:13px;letter-spacing:1px;
+  padding:9px 24px;color:#2b2413;
+  background:linear-gradient(180deg,#f0dfb2 0%,#d3bc8e 55%,#b39a67 100%);
+  transition:filter .15s, transform .1s;font-family:inherit;white-space:nowrap}
+.btn:hover{filter:brightness(1.12) drop-shadow(0 0 9px rgba(236,216,166,.55))}
+.btn:active{transform:scale(.96)}
+.btn:disabled{filter:grayscale(.8) brightness(.7);cursor:not-allowed}
+.btn.ghost{background:linear-gradient(180deg,rgba(64,78,120,.9),rgba(40,52,88,.9));color:var(--gold-hi);
+  box-shadow:inset 0 0 0 1px var(--line)}
+.btn.ghost:hover{filter:brightness(1.2) drop-shadow(0 0 8px rgba(140,160,220,.4))}
+.btn.danger{background:linear-gradient(180deg,#f0a8a0,#c05b52 60%,#9c423a);color:#fff}
+.btn.danger:hover{filter:brightness(1.1) drop-shadow(0 0 9px rgba(229,115,115,.6))}
+.btn.big{font-size:15px;padding:12px 34px;letter-spacing:2px}
+.btn.sm{font-size:12px;padding:6px 16px}
+.btn-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+
+/* ============ 标签页 ============ */
+.tabs{display:flex;gap:8px;margin:6px 0 16px}
+.tab{
+  position:relative;padding:10px 30px;cursor:pointer;color:var(--txt-dim);font-size:15px;letter-spacing:2px;
+  clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 100%,0 100%);
+  background:rgba(28,38,70,.55);border:none;font-family:inherit;transition:.15s}
+.tab.active{color:#2b2413;font-weight:700;background:linear-gradient(180deg,#f0dfb2,#c8ab72)}
+.tab:not(.active):hover{color:var(--gold-hi)}
+
+.page{display:none}.page.show{display:block}
+
+/* ============ 设备信息卡片 ============ */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:14px}
+.info-card{padding:14px 16px;min-height:96px;cursor:grab;user-select:none}
+.info-card.dragging{opacity:.85;transform:rotate(-2deg) scale(1.04);cursor:grabbing;
+  box-shadow:0 22px 44px rgba(0,0,0,.6), 0 0 24px rgba(211,188,142,.3)}
+.card-copy{
+  position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:7px;
+  border:1px solid var(--line-soft);background:rgba(10,15,30,.65);color:var(--gold);
+  cursor:pointer;font-size:12px;line-height:1;opacity:0;transition:.15s;z-index:2}
+.info-card:hover .card-copy{opacity:.95}
+.card-copy:hover{background:rgba(211,188,142,.28);border-color:var(--gold);box-shadow:0 0 8px rgba(211,188,142,.4)}
+.info-card .k{font-size:11.5px;color:var(--gold);letter-spacing:1.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.info-card .k::before{content:"◆";font-size:7px;color:var(--gold-dim)}
+.info-card .v{font-size:15px;font-weight:600;line-height:1.45;word-break:break-all}
+.info-card .sub{font-size:11.5px;color:var(--txt-dim);margin-top:5px;word-break:break-all}
+.info-card.empty{opacity:.35}
+.hint{color:var(--txt-dim);font-size:12.5px;margin-top:10px}
+
+/* ============ 部署步骤 ============ */
+.steps{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.step-card{padding:14px 18px}
+.step-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.step-no{
+  width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;
+  transform:rotate(45deg);border:1px solid var(--gold);border-radius:6px;
+  background:linear-gradient(135deg,rgba(236,216,166,.2),rgba(211,188,142,.05))}
+.step-no span{transform:rotate(-45deg);font-weight:800;color:var(--gold-hi);font-size:13px}
+.step-title{font-size:15.5px;font-weight:700;letter-spacing:.5px}
+.step-desc{font-size:12px;color:var(--txt-dim);margin-top:4px;line-height:1.6}
+.reboot-chip{font-size:11px;color:var(--orange);border:1px solid rgba(240,163,92,.5);padding:1px 8px;border-radius:10px}
+.req-chip{font-size:11px;padding:1px 8px;border-radius:10px;margin-left:6px}
+.req-chip.must{color:#2b2413;background:linear-gradient(180deg,#f0b9a8,#d37a63);font-weight:700}
+.req-chip.opt{color:var(--txt-dim);border:1px solid var(--line-soft)}
+.step-head .grow{flex:1}
+.step-params{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line-soft)}
+.step-params .fld label{font-size:11px}
+.step-params input[type=text],.step-params select{min-width:110px;padding:6px 10px;font-size:12.5px}
+.step-params input[type=text].wide{min-width:300px}
+.step-params .radio-row{padding:2px 0;font-size:12.5px;gap:10px}
+.force-lbl{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--txt-dim);cursor:pointer}
+.step-actions{display:flex;align-items:center;gap:10px}
+
+/* 徽标 */
+.badge{
+  display:inline-flex;align-items:center;gap:6px;font-size:11.5px;letter-spacing:1px;
+  padding:3px 12px;border-radius:12px;border:1px solid;white-space:nowrap}
+.badge b{font-weight:600}
+.badge.st-idle{color:var(--txt-dim);border-color:var(--line-soft)}
+.badge.st-precheck,.badge.st-running{color:var(--gold-hi);border-color:var(--gold);
+  background:rgba(211,188,142,.08);text-shadow:0 0 8px rgba(236,216,166,.5)}
+.badge.st-done{color:var(--green);border-color:rgba(111,206,149,.45);background:rgba(111,206,149,.07)}
+.badge.st-skip{color:var(--gold-hi);border-color:var(--line);background:rgba(211,188,142,.10)}
+.badge.st-fail{color:var(--red);border-color:rgba(229,115,115,.5);background:rgba(229,115,115,.08)}
+.badge.st-cancelled{color:var(--txt-dim);border-color:var(--line-soft)}
+.badge .spin{display:inline-block;animation:gemspin 1.6s linear infinite}
+.badge .detail{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit;opacity:.8;font-weight:400}
+
+/* 顶部操作条 */
+.action-bar{padding:14px 18px;display:flex;flex-direction:column;gap:12px}
+.action-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+
+/* ============ 终端 ============ */
+.term-card{margin-top:16px;overflow:hidden}
+.term-head{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;
+  border-bottom:1px solid var(--line-soft);background:rgba(12,17,34,.6)}
+.term-head .t{color:var(--gold);font-size:12.5px;letter-spacing:2px;display:flex;align-items:center;gap:8px}
+#terminal{
+  background:#070b16;color:#b7c4de;font-family:"Cascadia Mono",Consolas,monospace;
+  font-size:12.5px;line-height:1.55;height:320px;overflow-y:auto;padding:12px 16px;
+  white-space:pre-wrap;word-break:break-all;user-select:text;-webkit-user-select:text;cursor:text}
+#terminal .ok{color:#6fce95}#terminal .err{color:#e57373}
+.step-progress{height:4px;background:rgba(255,255,255,.06);position:relative}
+.step-progress .bar{position:absolute;left:0;top:0;bottom:0;width:0;
+  background:linear-gradient(90deg,#b39a67,#ecd8a6);transition:width .4s;box-shadow:0 0 10px rgba(236,216,166,.6)}
+
+/* 确认弹窗 */
+#modal_mask{position:fixed;inset:0;background:rgba(4,7,16,.62);backdrop-filter:blur(3px);z-index:90;display:none}
+#modal{position:fixed;top:42%;left:50%;transform:translate(-50%,-50%);z-index:95;display:none;
+  width:440px;max-width:92vw;padding:22px 26px 20px;border-radius:14px;border:1px solid var(--gold);
+  background:linear-gradient(165deg,#1d2949 0%,#111a35 90%);
+  box-shadow:0 24px 64px rgba(0,0,0,.65),0 0 26px rgba(211,188,142,.18)}
+#modal .m-title{color:var(--gold);letter-spacing:2px;font-size:14px;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;font-weight:700}
+#modal .m-title::before{content:"◆";font-size:10px}
+#modal .m-msg{color:var(--txt);font-size:14px;line-height:1.8;word-break:break-all;white-space:pre-wrap}
+#modal .m-btns{display:flex;justify-content:flex-end;gap:12px;margin-top:22px}
+
+/* toast */
+#toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-20px);z-index:99;
+  padding:11px 26px;border-radius:10px;font-size:13.5px;letter-spacing:1px;opacity:0;pointer-events:none;
+  transition:.3s;border:1px solid var(--line);color:var(--gold-hi);
+  background:rgba(20,28,52,.95);box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 16px rgba(211,188,142,.15)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{color:#ffb4ae;border-color:rgba(229,115,115,.5);box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 16px rgba(229,115,115,.2)}
+.cmd-box{width:100%;background:rgba(10,15,30,.7);border:1px solid var(--line);border-radius:8px;color:#b7c4de;
+  font-family:"Cascadia Mono",Consolas,monospace;font-size:12.5px;line-height:1.6;padding:10px 12px;outline:none;
+  resize:vertical;user-select:text;-webkit-user-select:text;transition:border .15s}
+.cmd-box:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(211,188,142,.12)}
+input[type=file]{display:none}
+footer{text-align:center;color:var(--txt-dim);font-size:11.5px;margin-top:26px;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div id="stars"></div>
+<div class="wrap">
+
+  <header>
+    <h1 class="title"><span class="gem">✦</span>GPU P2P 部署助手</h1>
+    <div class="btn-row">
+      <button class="btn ghost sm" onclick="testConnect()">测试连接</button>
+    </div>
+  </header>
+  <div class="divider"><span class="dm">◆</span></div>
+
+  <!-- 连接信息 -->
+  <div class="card conn">
+    <div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+    <div class="grid">
+      <div class="fld"><label>历史连接</label>
+        <select id="c_hist" onchange="applyHistory()" style="min-width:190px"><option value="">— 选择历史记录 —</option></select>
+      </div>
+      <div class="fld"><label>服务器 IP</label><input id="c_host" placeholder="10.10.3.153" style="min-width:170px"></div>
+      <div class="fld"><label>SSH 端口</label><input id="c_port" value="22" style="width:80px"></div>
+      <div class="fld"><label>用户名</label><input id="c_user" value="root" style="width:110px"></div>
+      <div class="fld"><label>认证方式</label>
+        <div class="radio-row">
+          <label><input type="radio" name="auth" value="password" checked onchange="authSwitch()">密码</label>
+          <label><input type="radio" name="auth" value="key" onchange="authSwitch()">私钥</label>
+        </div>
+      </div>
+      <div class="fld" id="f_password"><label>密码</label><input id="c_pass" type="password" style="min-width:170px"></div>
+      <div class="fld" id="f_keypath" style="display:none"><label>私钥文件路径</label><input id="c_keypath" placeholder="C:\Users\you\.ssh\id_rsa" style="min-width:230px"></div>
+      <div class="fld" id="f_keypass" style="display:none"><label>私钥口令(可选)</label><input id="c_keypass" type="password" style="min-width:130px"></div>
+      <div class="fld"><label>代理(可选, 服务器侧)</label>
+        <input id="c_proxy" placeholder="http://10.0.1.63:7897" style="min-width:180px" title="服务器上的下载命令(wget/git/curl)将走此代理，apt 不受影响">
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-page="p_info" onclick="switchTab(this)">设备信息</button>
+    <button class="tab" data-page="p_deploy" onclick="switchTab(this)">部署安装</button>
+    <button class="tab" data-page="p_vllm" onclick="switchTab(this)">vLLM 服务</button>
+    <button class="tab" data-page="p_nccl" onclick="switchTab(this)">NCCL 测试</button>
+  </div>
+
+  <!-- ============ 页1 设备信息 ============ -->
+  <div class="page show" id="p_info">
+    <div class="btn-row">
+      <button class="btn big" id="btn_collect" onclick="collect()">◈ 采集设备信息</button>
+      <span class="hint">输入 IP 与认证信息后点击采集 · 卡片可拖动排序（自动记忆）</span>
+    </div>
+    <div class="info-grid" id="info_grid">
+      <div class="card info-card empty"><div class="shine"></div><div class="k">GPU</div><div class="v">—</div><div class="sub">等待采集…</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 页2 部署安装 ============ -->
+  <div class="page" id="p_deploy">
+    <div class="card action-bar">
+      <div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+      <div class="action-row">
+        <button class="btn big" id="btn_runall" onclick="runAll()">✦ 一键执行全部勾选步骤</button>
+        <button class="btn ghost" onclick="envCheck()">环境体检</button>
+        <button class="btn ghost" onclick="verifyP2P()">一键验证 P2P</button>
+        <button class="btn danger" onclick="rebootServer()">重启服务器</button>
+        <button class="btn ghost danger" id="btn_stop" style="color:#ffb4ae" onclick="stopTask()">■ 停止</button>
+      </div>
+      <div class="hint">执行前自动预检：已安装且版本匹配的步骤将自动跳过（可在步骤内勾选「强制重装」）。需重启的步骤完成后请用「重启服务器」。</div>
+    </div>
+
+    <div class="steps" id="steps"></div>
+  </div>
+
+  <!-- ============ 页3 vLLM 服务 ============ -->
+  <div class="page" id="p_vllm">
+    <div class="card action-bar">
+      <div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+      <div class="action-row">
+        <button class="btn big" onclick="startVllm()">▶ 启动 vLLM</button>
+        <button class="btn danger" onclick="stopVllm()">■ 停止 vLLM</button>
+        <button class="btn ghost" onclick="vllmStatus()">状态 / 日志</button>
+      </div>
+      <div class="hint">启动 = 先自动停止已在运行的 vllm serve，再以 nohup 后台常驻（关闭本程序不影响服务）；日志: /var/log/vllm_serve.log</div>
+    </div>
+
+    <div class="card step-card" style="margin-top:14px">
+      <div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+      <div class="step-head">
+        <span class="step-no"><span>A</span></span>
+        <div class="grow">
+          <div class="step-title">模型参数</div>
+          <div class="step-desc">模型路径同时用于 vLLM 启动命令与测试脚本的 tokenizer_path</div>
+        </div>
+      </div>
+      <div class="step-params">
+        <div class="fld"><label>模型路径</label><input id="v_model_path" style="min-width:230px" value="/data/Qwen3-32B" oninput="saveVllmCfg()"></div>
+        <div class="fld"><label>conda 激活命令</label><input id="v_conda" value="conda activate vllm" style="min-width:170px" title="启动/测试前先执行的激活命令；留空则不激活" oninput="saveVllmCfg()"></div>
+        <div class="fld"><label>服务模型名 (served-model-name)</label><input id="v_served" value="llamq3" style="min-width:130px" oninput="saveVllmCfg()"></div>
+        <div class="fld"><label>测试 model 参数</label><input id="v_bench_model" value="qwen3" style="min-width:120px" oninput="saveVllmCfg()"></div>
+        <div class="fld"><label>服务端口</label><input id="v_port" value="8000" style="width:80px" oninput="saveVllmCfg()"></div>
+      </div>
+      <div class="step-params">
+        <div class="fld"><label>--max-model-len</label><input id="v_maxlen" value="32768" style="width:100px" oninput="saveVllmCfg()"></div>
+        <div class="fld"><label>--max-num-seqs</label><input id="v_seqs" value="300" style="width:80px" oninput="saveVllmCfg()"></div>
+        <div class="fld"><label>--gpu-memory-utilization</label><input id="v_gpuutil" value="0.85" style="width:80px" oninput="saveVllmCfg()"></div>
+        <div class="fld"><label>--tensor-parallel-size</label><input id="v_tp" value="8" style="width:70px" oninput="saveVllmCfg()"></div>
+      </div>
+    </div>
+
+    <div class="card step-card" style="margin-top:12px">
+      <div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+      <div class="step-head">
+        <span class="step-no"><span>B</span></span>
+        <div class="grow"><div class="step-title">启动 vLLM</div>
+        <div class="step-desc">可随时修改命令后启动 · bash -lc 执行（自动加载 profile.d 环境）· nohup 后台常驻</div></div>
+        <div class="step-actions"><button class="btn sm ghost" onclick="genVllmCmd()">⟳ 按参数生成</button></div>
+      </div>
+      <div style="margin-top:10px">
+        <textarea id="v_cmd" rows="3" class="cmd-box" spellcheck="false" oninput="saveVllmCfg()"></textarea>
+      </div>
+    </div>
+
+    <div class="card step-card" style="margin-top:12px">
+      <div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+      <div class="step-head">
+        <span class="step-no"><span>C</span></span>
+        <div class="grow"><div class="step-title">性能测试 (evalscope)</div>
+        <div class="step-desc">脚本部署到 /opt/qwen3_bench.py · model 与 tokenizer_path 取自上方参数 · 运行前请确认 vLLM 服务已就绪</div></div>
+        <div class="step-actions"><button class="btn sm ghost" onclick="genTestCmd()">⟳ 按参数生成</button></div>
+      </div>
+      <div class="step-params">
+        <div class="fld"><label>--p 并发 (支持 1-10 范围)</label><input id="v_p" value="100-560" style="min-width:120px" oninput="saveVllmCfg()"></div>
+        <div class="fld"><label>--m tokens</label><input id="v_m" value="1024" style="width:90px" oninput="saveVllmCfg()"></div>
+        <div class="fld"><label>结果输出目录</label><input id="v_outdir" value="/root/test/outputs" style="min-width:200px" title="evalscope 的 output_dir，运行/停止后自动定位本次结果目录并同步到 D 区" oninput="saveVllmCfg()"></div>
+      </div>
+      <div style="margin-top:10px">
+        <textarea id="v_tcmd" rows="2" class="cmd-box" spellcheck="false" oninput="saveVllmCfg()"></textarea>
+      </div>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn ghost sm" onclick="deployScript()">⇩ 部署测试脚本到服务器</button>
+        <button class="btn ghost sm" onclick="installEvalscope()">pip 安装 evalscope</button>
+        <button class="btn" onclick="runBench()">▶ 运行性能测试</button>
+      </div>
+    </div>
+
+    <div class="card step-card" style="margin-top:12px">
+      <div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+      <div class="step-head">
+        <span class="step-no"><span>D</span></span>
+        <div class="grow"><div class="step-title">结果提取 (benchmark_summary.csv 汇总)</div>
+        <div class="step-desc">从最新一次测试的输出目录提取并发/吞吐/TTFT 汇总为 CSV · 需要 pandas（evalscope 依赖已含）· 运行前请先「部署结果脚本」</div></div>
+      </div>
+      <div class="step-params">
+        <div class="fld"><label>结果根目录</label><input id="v_rbase" value="/root/test/outputs" style="min-width:200px" oninput="saveVllmCfg()"></div>
+        <div class="fld"><label>目标子文件夹</label><input id="v_rsub" value="llamq3" style="min-width:120px" oninput="saveVllmCfg()"></div>
+        <div class="fld"><label>输出 CSV 路径</label><input id="v_rcsv" value="" placeholder="~/long/benchmark_llama.csv" style="min-width:200px" oninput="saveVllmCfg()"></div>
+      </div>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn ghost sm" onclick="deployResults()">⇩ 部署结果脚本</button>
+        <button class="btn ghost sm" onclick="runResults()">▶ 运行结果提取</button>
+        <button class="btn sm" onclick="downloadCsv()">⇩ 下载 CSV 到本机</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 页4 NCCL 测试 ============ -->
+  <div class="page" id="p_nccl">
+    <div class="card action-bar">
+      <div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+      <div class="action-row">
+        <button class="btn" onclick="saveNcclShot()">📸 测试截图保存</button>
+        <span class="hint">把本次 NCCL 测试输出渲染成图片保存（含金色标题与时间戳）</span>
+      </div>
+      <div class="hint">测试卡间通讯带宽。单机：直接运行 nccl-tests；多机 (mpirun)：需各节点已装 nccl-tests 与驱动、root 免密 SSH 互通、网卡名/IB 参数正确。命令生成后可自由修改再运行，输出实时显示在下方终端。</div>
+    </div>
+
+    <div class="card step-card" style="margin-top:14px">
+      <div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+      <div class="step-head">
+        <span class="step-no"><span>A</span></span>
+        <div class="grow"><div class="step-title">单机测试</div>
+        <div class="step-desc">export NCCL_P2P_LEVEL=SYS NCCL_DEBUG=VERSION · 测试项可填 all_reduce_perf / all_gather_perf / alltoall_perf</div></div>
+        <div class="step-actions"><button class="btn sm ghost" onclick="genSingleCmd()">⟳ 生成命令</button>
+        <button class="btn sm ghost" onclick="findNcclBin('n_dir','n_test')">🔍 查找程序</button>
+        <button class="btn sm ghost" onclick="saveNcclShot()">📸 测试截图</button>
+        <button class="btn" onclick="runNccl('n_scmd')">▶ 运行</button></div>
+      </div>
+      <div class="step-params">
+        <div class="fld"><label>测试项</label>
+          <select id="n_test" style="min-width:160px" onchange="saveNcclCfg()">
+            <option value="all_reduce_perf">all_reduce_perf</option>
+            <option value="all_gather_perf">all_gather_perf</option>
+            <option value="alltoall_perf">alltoall_perf</option>
+          </select></div>
+        <div class="fld"><label>nccl-tests 目录</label><input id="n_dir" value="" placeholder="~/long/nccl-tests/build" style="min-width:200px" oninput="saveNcclCfg()"></div>
+        <div class="fld"><label>GPU 列表</label><input id="n_gpus" value="0,1,2,3,4,5,6,7" style="min-width:170px" oninput="saveNcclCfg()"></div>
+        <div class="fld"><label>-g 卡数</label><input id="n_ng" value="8" style="width:70px" oninput="saveNcclCfg()"></div>
+        <div class="fld"><label>-b 起始</label><input id="n_b" value="1G" style="width:80px" oninput="saveNcclCfg()"></div>
+        <div class="fld"><label>-e 结束</label><input id="n_e" value="8G" style="width:80px" oninput="saveNcclCfg()"></div>
+        <div class="fld"><label>conda 环境(可空)</label><input id="n_env" value="" style="width:110px" oninput="saveNcclCfg()"></div>
+      </div>
+      <div style="margin-top:10px">
+        <textarea id="n_scmd" rows="3" class="cmd-box" spellcheck="false"></textarea>
+      </div>
+    </div>
+
+    <div class="card step-card" style="margin-top:12px">
+      <div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+      <div class="step-head">
+        <span class="step-no"><span>B</span></span>
+        <div class="grow"><div class="step-title">多机测试 (mpirun)</div>
+        <div class="step-desc">主要变量：主机列表(-H)、网卡名、二进制路径 · 各节点 GPU 显存必须充足（残留 vLLM 会 OOM），先「检查各节点 GPU」确认 · 需要 root 免密 SSH</div></div>
+        <div class="step-actions"><button class="btn sm ghost" onclick="genMultiCmd()">⟳ 生成命令</button>
+        <button class="btn sm ghost" onclick="findNcclBin(null,'n_bin')">🔍 查找程序</button>
+        <button class="btn sm ghost" onclick="checkNodesGpu()">🖥 检查各节点 GPU</button>
+        <button class="btn" onclick="runNccl('n_mcmd')">▶ 运行</button></div>
+      </div>
+      <div class="step-params">
+        <div class="fld"><label>主机列表 (-H)</label><input id="n_hosts" value="10.10.3.153:8,10.10.3.154:8" style="min-width:240px" oninput="saveNcclCfg()"></div>
+        <div class="fld"><label>网卡名</label><input id="n_nic" value="enp225s0f0" style="min-width:140px" oninput="saveNcclCfg()"></div>
+        <div class="fld"><label>二进制路径</label><input id="n_bin" value="" placeholder="~/long/nccl-tests/build/all_reduce_perf" style="min-width:260px" oninput="saveNcclCfg()"></div>
+      </div>
+      <div style="margin-top:10px">
+        <textarea id="n_mcmd" rows="10" class="cmd-box" spellcheck="false"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- 终端 -->
+  <div class="card term-card">
+    <div class="term-head">
+      <div class="t">◆ 任务终端</div>
+      <div class="btn-row">
+        <span class="badge st-idle" id="task_state">空闲</span>
+        <button class="btn ghost sm" onclick="copyTerm()">⧉ 复制</button>
+        <button class="btn ghost sm" onclick="clearTerm()">清屏</button>
+      </div>
+    </div>
+    <div class="step-progress"><div class="bar" id="prog_bar"></div></div>
+    <pre id="terminal"></pre>
+  </div>
+
+  <footer>Genshin-styled · SSH 直连 · 仅监听本机 127.0.0.1:8977 · 密码不落盘</footer>
+</div>
+<div id="modal_mask" onclick="modalDone(false)"></div>
+<div id="modal">
+  <div class="m-title">确认操作</div>
+  <div class="m-msg" id="modal_msg"></div>
+  <div class="m-btns">
+    <button class="btn ghost" onclick="modalDone(false)">取 消</button>
+    <button class="btn" onclick="modalDone(true)">确 定</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+/* ================================================= 通用 */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+function toast(msg, isErr){
+  const t = $("#toast"); t.textContent = msg;
+  t.className = "show" + (isErr ? " err" : "");
+  clearTimeout(t._h); t._h = setTimeout(()=>t.className="", 3200);
+}
+function connectCfg(){
+  const auth = $$('input[name=auth]').find(r=>r.checked).value;
+  const c = {
+    host: $("#c_host").value.trim(), port: +$("#c_port").value || 22,
+    username: $("#c_user").value.trim() || "root",
+    proxy: $("#c_proxy").value.trim(),
+    auth: { type: auth }
+  };
+  if (auth === "password") c.auth.password = $("#c_pass").value;
+  else { c.auth.key_path = $("#c_keypath").value; c.auth.passphrase = $("#c_keypass").value; }
+  saveConn(c);
+  return c;
+}
+function saveConn(c){
+  const s = {...c}; if (s.auth) s.auth = {...s.auth, password: undefined, passphrase: undefined};
+  localStorage.setItem("p2p_conn", JSON.stringify(s));
+}
+function loadConn(){
+  try{
+    const s = JSON.parse(localStorage.getItem("p2p_conn")||"null"); if(!s) return;
+    $("#c_host").value = s.host||""; $("#c_port").value = s.port||22; $("#c_user").value = s.username||"root";
+    $("#c_proxy").value = s.proxy||"";
+    if (s.auth?.type === "key"){ $$('input[name=auth]').find(r=>r.value==="key").checked = true; authSwitch(); $("#c_keypath").value = s.auth.key_path||""; }
+  }catch(e){}
+}
+/* ── 服务器连接历史 ── */
+function loadHistory(){
+  let h = [];
+  try{ h = JSON.parse(localStorage.getItem("p2p_server_history")||"[]"); }catch(e){}
+  const sel = $("#c_hist");
+  sel.innerHTML = '<option value="">— 选择历史记录 —</option>' +
+    h.map((x,i)=>`<option value="${i}">${x.host} : ${x.port} · ${x.username}${x.authType==="key"?" (私钥)":""}${x.password?" 🔒":""}</option>`).join("");
+}
+function rememberServer(cfg){
+  try{
+    if (!cfg.host) return;
+    let h = JSON.parse(localStorage.getItem("p2p_server_history")||"[]");
+    const item = {host: cfg.host, port: cfg.port, username: cfg.username,
+      authType: cfg.auth?.type||"password",
+      password: cfg.auth?.password||"", key_path: cfg.auth?.key_path||"",
+      passphrase: cfg.auth?.passphrase||""};
+    h = h.filter(x=>!(x.host===item.host && x.port===item.port && x.username===item.username));
+    h.unshift(item);
+    h = h.slice(0, 12);
+    localStorage.setItem("p2p_server_history", JSON.stringify(h));
+    loadHistory();
+  }catch(e){}
+}
+function applyHistory(){
+  const i = $("#c_hist").value;
+  if (i === "") return;
+  let h = [];
+  try{ h = JSON.parse(localStorage.getItem("p2p_server_history")||"[]"); }catch(e){}
+  const x = h[+i];
+  if (!x) return;
+  $("#c_host").value = x.host; $("#c_port").value = x.port; $("#c_user").value = x.username;
+  const auth = x.authType||"password";
+  $$('input[name=auth]').find(r=>r.value===auth).checked = true;
+  authSwitch();
+  if (auth === "password") $("#c_pass").value = x.password||"";
+  else { $("#c_keypath").value = x.key_path||""; $("#c_keypass").value = x.passphrase||""; }
+  toast("已填入 " + x.host + "（含密码，直接点测试连接即可）");
+}
+async function api(path, body){
+  const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+  const text = await r.text();
+  let d;
+  try { d = JSON.parse(text); }
+  catch(e){ throw new Error(`服务返回异常（HTTP ${r.status}），请确认使用的是最新版程序窗口`); }
+  return d;
+}
+function authSwitch(){
+  const isKey = $$('input[name=auth]').find(r=>r.checked).value === "key";
+  $("#f_password").style.display = isKey ? "none" : "";
+  $("#f_keypath").style.display = isKey ? "" : "none";
+  $("#f_keypass").style.display = isKey ? "" : "none";
+}
+/* ── 登录用户 home（~/long 各路径的基础） ── */
+window._rhome = localStorage.getItem("p2p_rhome") || "";
+async function ensureHome(){
+  if (window._rhome) return window._rhome;
+  try{
+    const r = await api("/api/user_home", {connect: connectCfg()});
+    if (r.ok && r.home){
+      window._rhome = r.home;
+      localStorage.setItem("p2p_rhome", r.home);
+      applyHomeDefaults();
+    }
+  }catch(e){}
+  return window._rhome;
+}
+function applyHomeDefaults(){
+  const h = window._rhome; if (!h) return;
+  const fill = (id, suffix) => { const el = document.getElementById(id);
+    if (el && !el.value.trim()) el.value = h + suffix; };
+  fill("n_dir", "/long/nccl-tests/build");
+  fill("v_rcsv", "/long/benchmark_llama.csv");
+  ["v_tcmd", "n_scmd", "n_mcmd"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value.includes("~/long/")) el.value = el.value.replaceAll("~/long/", h + "/long/");
+  });
+  saveNcclCfg(); saveVllmCfg();
+}
+async function testConnect(){
+  toast("正在连接…");
+  try{
+    const cfg = connectCfg();
+    const r = await api("/api/test_connect", {connect: cfg});
+    if (r.ok){ rememberServer(cfg); await ensureHome(); toast(`✔ 连接成功 · 用户 ${r.user} · 内核 ${r.kernel}`); }
+    else toast("✘ " + r.error, true);
+  }catch(e){ toast("✘ 请求失败: " + e.message, true); }
+}
+function switchTab(btn){
+  $$(".tab").forEach(t=>t.classList.remove("active")); btn.classList.add("active");
+  $$(".page").forEach(p=>p.classList.remove("show"));
+  $("#" + btn.dataset.page).classList.add("show");
+}
+
+/* 星尘背景 */
+(function(){
+  const box = $("#stars");
+  for (let i=0;i<70;i++){
+    const s = document.createElement("div"); s.className="star";
+    const sz = Math.random()*2+0.6;
+    s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${sz}px;height:${sz}px;animation-delay:${Math.random()*4}s;animation-duration:${3+Math.random()*4}s`;
+    box.appendChild(s);
+  }
+})();
+
+/* ── 主题确认弹窗（替代原生 confirm） ── */
+let _modalResolve = null;
+function askConfirm(msg){
+  return new Promise(res => {
+    _modalResolve = res;
+    $("#modal_msg").textContent = msg;
+    $("#modal_mask").style.display = "block";
+    $("#modal").style.display = "block";
+  });
+}
+function modalDone(v){
+  $("#modal_mask").style.display = "none";
+  $("#modal").style.display = "none";
+  if (_modalResolve){ _modalResolve(v); _modalResolve = null; }
+}
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && _modalResolve) modalDone(false);
+});
+
+/* ================================================= 终端 */
+let termBuf = "";
+let autoScroll = true;
+function termWrite(s){
+  for (let i=0;i<s.length;i++){
+    const c = s[i];
+    if (c === "\r"){ const i2 = termBuf.lastIndexOf("\n"); termBuf = termBuf.slice(0, i2+1); }
+    else termBuf += c;
+  }
+  if (termBuf.length > 500000) termBuf = termBuf.slice(-400000);
+  const el = $("#terminal");
+  el.textContent = termBuf;
+  if (autoScroll) el.scrollTop = el.scrollHeight;
+}
+$("#terminal").addEventListener("scroll", function(){
+  autoScroll = this.scrollTop + this.clientHeight >= this.scrollHeight - 30;
+});
+function clearTerm(){ termBuf=""; $("#terminal").textContent=""; }
+async function copyTerm(){
+  const text = termBuf || "";
+  if (!text.trim()){ toast("终端为空，没有可复制的内容"); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("✔ 已复制终端内容（" + text.length + " 字符）");
+  } catch(e) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
+      document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); ta.remove();
+      toast("✔ 已复制终端内容");
+    } catch(e2){ toast("✘ 复制失败，请手动选择文本", true); }
+  }
+}
+
+const STATE_TXT = {idle:"空闲", running:"执行中", done:"已完成", error:"失败", cancelled:"已取消"};
+function setTaskState(st){
+  const b = $("#task_state");
+  b.className = "badge st-" + (st==="running"?"running":st==="done"?"done":st==="error"?"fail":st==="cancelled"?"cancelled":"idle");
+  b.innerHTML = (st==="running" ? '<span class="spin">✦</span>' : "◆ ") + (STATE_TXT[st]||st);
+}
+
+/* ================================================= 轮询 */
+let polling = null, cursor = 0, lastProgress = 0, lastTaskCfg = null, lastTaskKind = null, lastBenchCapture = false, lastBenchOutdir = "";
+function startPolling(){
+  stopPolling();
+  cursor = 0;
+  polling = setInterval(async ()=>{
+    try{
+      const r = await fetch("/api/status?cursor="+cursor);
+      const d = await r.json();
+      for (const chunk of d.logs) termWrite(chunk);
+      cursor = d.cursor;
+      setTaskState(d.state);
+      if (d.steps && d.steps.length){
+        for (const s of d.steps){
+          const b = document.querySelector(`#badge_${s.id}`);
+          if (b) renderBadge(b, s);
+        }
+        const doneN = d.steps.filter(s=>["done","skip"].includes(s.state)).length;
+        lastProgress = Math.max(lastProgress, doneN / d.steps.length * 100);
+        if (d.state==="done") lastProgress = 100;
+        if (d.state==="error") lastProgress = Math.max(lastProgress, (doneN+1) / d.steps.length * 100);
+        $("#prog_bar").style.width = lastProgress + "%";
+      }
+      if (d.state !== "running"){
+        stopPolling();
+        setButtons(false);
+        if (d.state === "done" && lastTaskCfg) rememberServer(lastTaskCfg);
+        if (lastTaskKind === "bench" && lastBenchCapture && lastTaskCfg) captureOutdir(lastTaskCfg, lastBenchOutdir);
+        const msg = d.state==="done" ? "◆ 任务完成" : d.state==="cancelled" ? "任务已取消" : "任务失败，请查看终端日志";
+        toast(msg, d.state==="error");
+      }
+    }catch(e){/* 网络抖动忽略 */}
+  }, 800);
+}
+function stopPolling(){ if (polling){ clearInterval(polling); polling = null; } }
+function setButtons(dis){
+  $("#btn_runall").disabled = dis;
+  $$(".btn-install").forEach(b=>b.disabled = dis);
+  $("#btn_collect").disabled = dis;
+}
+
+/* ================================================= 设备信息采集 */
+const CARD_KEYS = ["gpu","driver","cuda","cpu","mem","disk","name","os","ip","bmc","power","uptime"];
+function renderInfo(d){
+  const g = $("#info_grid");
+  g.innerHTML = "";
+  const order = JSON.parse(localStorage.getItem("p2p_cards_order")||"null") || CARD_KEYS;
+  const mk = (k)=>{
+    let title, v, sub = "";
+    switch(k){
+      case "gpu": title="GPU"; v = d.gpu_name ? `${d.gpu_name} · 共 ${d.gpu_mem_gb} GB ×${d.gpu_count}` : "未检测到"; break;
+      case "driver": title="驱动版本"; v = d.driver; break;
+      case "cuda": title="CUDA 版本"; v = d.cuda; sub = d.cuda_note||""; break;
+      case "cpu": title="CPU 型号"; v = d.cpu?.model||"-"; sub = d.cpu ? `插槽 ×${d.cpu.sockets} · 每颗 ${d.cpu.cores} 核` : ""; break;
+      case "mem": title="内存总量"; v = d.mem_total_gb ? `${d.mem_total_gb} GB × ${d.dimm_count||"?"} 条` : "-"; sub = (d.dimm_sample? d.dimm_sample+"/条 · ":"") + (d.dimm_type||""); break;
+      case "disk": title="磁盘"; v = `共 ${d.disks?.length||0} 块 · ${d.disk_total_gb||0} GB`; sub = d.disks?.map(x=>x.name).join("、"); break;
+      case "name": title="服务器名"; v = d.name||"-"; sub = "主机名: " + (d.hostname||"-"); break;
+      case "os": title="操作系统"; v = d.os||"-"; sub = d.kernel||""; break;
+      case "ip": title="本机 IP"; v = d.ip||"-"; break;
+      case "bmc": title="BMC 地址"; v = d.bmc||"未检测到"; break;
+      case "power": title="功率 (实时/峰值)"; v = `${d.power_draw??"-"} W / ${d.power_limit??"-"} W`; break;
+      case "uptime": title="运行天数"; v = d.uptime_days!=null ? `${d.uptime_days} 天` : "-"; break;
+      default: title=k; v="-";
+    }
+    const card = document.createElement("div");
+    card.className = "card info-card"; card.draggable = true; card.dataset.key = k;
+    card.innerHTML = `<div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+      <div class="k">${title}</div><div class="v"></div>${sub?`<div class="sub"></div>`:""}`;
+    card.querySelector(".v").textContent = v;
+    if (sub) card.querySelector(".sub").textContent = sub;
+    // 右上角复制按钮：复制卡片全部内容
+    const cp = document.createElement("button");
+    cp.className = "card-copy"; cp.textContent = "⧉"; cp.title = "复制内容";
+    cp.addEventListener("click", async (e)=>{
+      e.stopPropagation();
+      const vv = card.querySelector(".v").textContent;
+      const ss = card.querySelector(".sub");
+      const text = ss ? (vv + "\n" + ss.textContent) : vv;
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("✔ 已复制【" + title + "】: " + vv.slice(0, 40));
+      } catch(err) {
+        const ta = document.createElement("textarea");
+        ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); toast("✔ 已复制【" + title + "】"); }
+        catch(e2){ toast("✘ 复制失败", true); }
+        ta.remove();
+      }
+    });
+    card.appendChild(cp);
+    bindDrag(card);
+    return card;
+  };
+  for (const k of order){ if (CARD_KEYS.includes(k)) g.appendChild(mk(k)); }
+  for (const k of CARD_KEYS){ if (!order.includes(k)) g.appendChild(mk(k)); }
+}
+async function collect(){
+  try{
+    setButtons(true); toast("正在采集设备信息…");
+    const cfg = connectCfg();
+    const d = await api("/api/collect", {connect: cfg});
+    if (!d.ok){ toast("✘ " + d.error, true); return; }
+    rememberServer(cfg);
+    renderInfo(d);
+    toast("✔ 采集完成");
+  }catch(e){ toast("✘ " + e.message, true); }
+  finally{ if (!polling) setButtons(false); }
+}
+
+/* 拖拽排序 */
+let dragEl = null;
+function bindDrag(card){
+  card.addEventListener("dragstart", e=>{
+    dragEl = card; card.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+  });
+  card.addEventListener("dragend", ()=>{
+    card.classList.remove("dragging"); dragEl = null;
+    localStorage.setItem("p2p_cards_order", JSON.stringify([...$("#info_grid").children].map(c=>c.dataset.key)));
+  });
+  card.addEventListener("dragover", e=>{
+    e.preventDefault();
+    if (!dragEl || dragEl===card) return;
+    const r = card.getBoundingClientRect();
+    const before = (e.clientX - r.left) / r.width < .5 && card !== dragEl.nextSibling;
+    $("#info_grid").insertBefore(dragEl, before ? card : card.nextSibling);
+  });
+}
+
+/* ================================================= 部署步骤 */
+const STEPS = [
+  {id:"update_source", title:"更新软件源", desc:"可选切换国内镜像源（自动备份原 sources.list）并执行 apt update", params:[
+    {k:"mirror", t:"select", label:"镜像源", def:"", opts:[["","保持现有源"],["aliyun","阿里云"],["tsinghua","清华"],["ustc","中科大"]]},
+  ]},
+  {id:"build_deps", title:"安装编译依赖", desc:"build-essential / cmake / dkms / unzip / gcc / linux-headers-$(uname -r) 等 · 逐包检测，只装缺失"},
+  {id:"hold_kernel", title:"固定内核版本", desc:"apt-mark hold 当前内核镜像与头文件，防止系统升级导致驱动模块失效"},
+  {id:"disable_nouveau", title:"禁用 nouveau", desc:"blacklist + update-initramfs + grub (rdblacklist=nouveau nouveau.modeset=0)", reboot:true},
+  {id:"disable_acs", title:"关闭 ACS", desc:"setpci 运行时关闭 PCIe ACS（ECAP_ACS+0x6.w=0000），重启后需重新执行 · BIOS 建议: Resize Bar 开 / IOMMU 关 / AI Optimized"},
+  {id:"uninstall_driver", title:"卸载原有驱动", desc:"nvidia-uninstall + find /usr/lib -iname *nvidia*.ko 清理内核模块", reboot:true, params:[
+    {k:"also_cuda", t:"check", label:"同时卸载 CUDA", def:false},
+  ]},
+  {id:"install_driver", title:"安装 NVIDIA 驱动", desc:"静默安装，安装前 rmmod 清空模块。完整安装=含官方内核模块(--dkms)；--no-kernel-modules=仅用户态，需配合下一步 P2P 内核模块", params:[
+    {k:"version", t:"text", label:"驱动版本", def:"580.105.08"},
+    {k:"mode", t:"radio", label:"安装模式", def:"nokm", opts:[["full","完整安装 (--dkms)"],["nokm","--no-kernel-modules"]]},
+    {k:"source", t:"radio", label:"安装包来源", def:"online", opts:[["online","官方源下载"],["remote","服务器已有路径"],["local","本地安装包"]]},
+    {k:"local_path", t:"file", label:".run 安装包", when:p=>p.source==="local"},
+    {k:"url", t:"text", label:"自定义 URL (可选，留空用官方源)", wide:true, when:p=>p.source==="online"},
+    {k:"server_path", t:"text", label:"服务器上的完整路径", wide:true, ph:"/home/oem/Downloads/NVIDIA-Linux-x86_64-580.105.08.run", when:p=>p.source==="remote"},
+  ]},
+  {id:"p2p_modules", title:"安装 P2P 内核模块", desc:"aikitoria/open-gpu-kernel-modules 对应 -p2p 分支，编译替换 nvidia 内核模块（--no-kernel-modules 驱动必装）", params:[
+    {k:"source", t:"radio", label:"源码来源", def:"online", opts:[["online","git 克隆"],["remote","服务器已有源码包"],["local","本地源码包"]]},
+    {k:"branch", t:"text", label:"分支(留空自动)", ph:"自动 = 驱动版本-p2p"},
+    {k:"local_path", t:"file", label:"源码包 zip/tar", when:p=>p.source==="local"},
+    {k:"server_path", t:"text", label:"服务器上的源码包路径", wide:true, ph:"/home/oem/Downloads/open-gpu-kernel-modules.zip", when:p=>p.source==="remote"},
+  ]},
+  {id:"install_cuda", title:"安装 CUDA", desc:"官方 apt 仓库方式自动匹配系统版本与 CUDA 版本（cuda-toolkit-13-2），装完自动写环境变量；也可用 runfile / 服务器已有路径 / 本地包", params:[
+    {k:"version", t:"text", label:"CUDA 版本", def:"13.2"},
+    {k:"source", t:"radio", label:"安装方式", def:"apt", opts:[["apt","官方 apt 仓库(推荐·自动匹配)"],["runfile","runfile 下载地址"],["remote","服务器已有路径"],["local","本地安装包"]]},
+    {k:"url", t:"text", label:"runfile 完整下载地址", wide:true, ph:"https://developer.download.nvidia.com/compute/cuda/13.2.0/local_installers/cuda_13.2.0_5xx.xx_linux.run", when:p=>p.source==="runfile"},
+    {k:"server_path", t:"text", label:"服务器上的完整路径", wide:true, ph:"/home/oem/Downloads/cuda_13.2.0-580.xx_linux.run", when:p=>p.source==="remote"},
+    {k:"local_path", t:"file", label:".run 安装包", when:p=>p.source==="local"},
+  ]},
+  {id:"install_anaconda", title:"安装 Anaconda3", desc:"静默安装到 /opt/anaconda3 (-b 模式) 并写入 /etc/profile.d", params:[
+    {k:"version", t:"text", label:"版本", def:"2025.06-0"},
+    {k:"source", t:"radio", label:"安装包来源", def:"online", opts:[["online","官方源下载"],["remote","服务器已有路径"],["local","本地安装包"]]},
+    {k:"local_path", t:"file", label:".sh 安装包", when:p=>p.source==="local"},
+    {k:"url", t:"text", label:"自定义 URL (可选，留空用官方源)", wide:true, when:p=>p.source==="online"},
+    {k:"server_path", t:"text", label:"服务器上的完整路径", wide:true, ph:"/home/oem/Downloads/Anaconda3-2025.06-0-Linux-x86_64.sh", when:p=>p.source==="remote"},
+  ]},
+  {id:"install_nccl", title:"安装 NCCL", desc:"txz 解压至 /usr/local/nccl + ldconfig + profile.d · 自动检测服务器 CUDA 与驱动版本，匹配对应的 NCCL 包（版本号可不写 +cuda 部分）", params:[
+    {k:"version", t:"text", label:"NCCL 版本", def:"2.29.3-1", ph:"如 2.29.3-1（cuda 部分自动匹配）"},
+    {k:"source", t:"radio", label:"安装包来源", def:"online", opts:[["online","官方源下载"],["remote","服务器已有路径"],["local","本地 .txz"]]},
+    {k:"local_path", t:"file", label:"txz 包", when:p=>p.source==="local"},
+    {k:"url", t:"text", label:"自定义 URL (可选，留空用官方源)", wide:true, when:p=>p.source==="online"},
+    {k:"server_path", t:"text", label:"服务器上的完整路径", wide:true, ph:"/home/oem/Downloads/nccl_2.29.3-1+cuda12.9_x86_64.txz", when:p=>p.source==="remote"},
+  ]},
+  {id:"nccl_tests", title:"安装 nccl-tests", desc:"安装到「登录用户 home/long/nccl-tests」并 cd 进去仅执行 make -j$(nproc)（自动识别 CUDA/NCCL）", params:[
+    {k:"source", t:"radio", label:"源码来源", def:"online", opts:[["online","git 克隆"],["remote","服务器已有源码包"],["local","本地源码包"]]},
+    {k:"local_path", t:"file", label:"源码包 zip/tar", when:p=>p.source==="local"},
+    {k:"server_path", t:"text", label:"服务器上的源码包路径", wide:true, ph:"/home/oem/Downloads/nccl-tests.zip", when:p=>p.source==="remote"},
+  ]},
+];
+
+const stepCfg = {};   // id -> {enabled, force, params...}
+function loadStepCfg(){
+  try{
+    const s = JSON.parse(localStorage.getItem("p2p_steps")||"null");
+    if (s) for (const st of STEPS) if (s[st.id]) stepCfg[st.id] = {...s[st.id]};
+  }catch(e){}
+  for (const st of STEPS){
+    if (!stepCfg[st.id]){
+      stepCfg[st.id] = {enabled: ["install_driver","p2p_modules","install_cuda","install_nccl","nccl_tests","disable_nouveau","disable_acs","build_deps"].includes(st.id)};
+      for (const p of (st.params||[])) stepCfg[st.id][p.k] = p.def;
+    }
+  }
+}
+function saveStepCfg(){ localStorage.setItem("p2p_steps", JSON.stringify(stepCfg)); }
+
+function renderBadge(el, s){
+  const map = {pending:["st-idle","◆ 待执行"], precheck:["st-precheck",'✦ 预检中'], running:["st-running",'<span class="spin">✦</span> 执行中'],
+    done:["st-done","✔ 完成"], skip:["st-skip","✔ 已装·跳过"], fail:["st-fail","✘ 失败"], cancelled:["st-cancelled","已取消"]};
+  const [cls, txt] = map[s.state] || map.pending;
+  el.className = "badge " + cls;
+  el.innerHTML = txt + (s.detail ? ` <b class="detail" title="${String(s.detail).replace(/"/g,'&quot;')}">${s.detail}</b>` : "");
+}
+
+function renderSteps(){
+  const box = $("#steps"); box.innerHTML = "";
+  const drvMode = stepCfg.install_driver.mode;
+  STEPS.forEach((st, idx)=>{
+    const cfg = stepCfg[st.id];
+    const card = document.createElement("div");
+    card.className = "card step-card";
+    card.innerHTML = `<div class="shine"></div><i class="dia tl"></i><i class="dia tr"></i><i class="dia bl"></i><i class="dia br"></i>
+      <div class="step-head">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" ${cfg.enabled?"checked":""} data-act="enable" style="width:16px;height:16px;accent-color:var(--gold)">
+          <span class="step-no"><span>${idx+1}</span></span>
+        </label>
+        <div class="grow">
+          <div class="step-title">${st.title}
+            ${st.reboot?'<span class="reboot-chip">需重启生效</span>':""}
+            ${st.id==="p2p_modules"?`<span class="req-chip ${drvMode==="nokm"?"must":"opt"}" id="req_chip">${drvMode==="nokm"?"必装":"可选"}</span>`:""}
+          </div>
+          <div class="step-desc">${st.desc}</div>
+        </div>
+        <div class="step-actions">
+          <label class="force-lbl" title="忽略预检结果，强制执行安装"><input type="checkbox" ${cfg.force?"checked":""} data-act="force" style="accent-color:var(--red)">强制重装</label>
+          <span class="badge st-idle" id="badge_${st.id}">◆ 待执行</span>
+          <button class="btn sm btn-install" onclick="runOne('${st.id}')">安 装</button>
+        </div>
+      </div>`;
+
+    if (st.params && st.params.length){
+      const pr = document.createElement("div");
+      pr.className = "step-params";
+      for (const p of st.params){
+        const fld = document.createElement("div");
+        fld.className = "fld"; fld.dataset.pk = p.k;
+        if (p.t === "radio"){
+          fld.innerHTML = `<label>${p.label}</label>`;
+          const row = document.createElement("div"); row.className = "radio-row";
+          for (const [val, txt] of p.opts){
+            const lb = document.createElement("label");
+            lb.innerHTML = `<input type="radio" name="rd_${st.id}_${p.k}" value="${val}" ${cfg[p.k]===val?"checked":""}>${txt}`;
+            lb.querySelector("input").addEventListener("change", ()=>{ cfg[p.k]=val; saveStepCfg(); refreshParams(st); });
+            row.appendChild(lb);
+          }
+          fld.appendChild(row);
+        } else if (p.t === "select"){
+          fld.innerHTML = `<label>${p.label}</label>`;
+          const sel = document.createElement("select");
+          for (const [val, txt] of p.opts){
+            const op = document.createElement("option"); op.value = val; op.textContent = txt;
+            if (cfg[p.k]===val) op.selected = true; sel.appendChild(op);
+          }
+          sel.addEventListener("change", ()=>{ cfg[p.k]=sel.value; saveStepCfg(); });
+          fld.appendChild(sel);
+        } else if (p.t === "check"){
+          fld.className = "force-lbl"; fld.style.marginTop = "10px";
+          fld.innerHTML = `<input type="checkbox" ${cfg[p.k]?"checked":""} style="accent-color:var(--gold)">${p.label}`;
+          fld.querySelector("input").addEventListener("change", e=>{ cfg[p.k]=e.target.checked; saveStepCfg(); });
+        } else if (p.t === "file"){
+          fld.innerHTML = `<label>${p.label}</label>`;
+          const row = document.createElement("div"); row.style.cssText = "display:flex;gap:6px;align-items:center";
+          const inp = document.createElement("input"); inp.type = "text"; inp.className="wide";
+          inp.value = cfg[p.k]||""; inp.placeholder = "本机路径，或点右侧选择文件";
+          inp.addEventListener("change", ()=>{ cfg[p.k]=inp.value; saveStepCfg(); });
+          const btn = document.createElement("button"); btn.className="btn ghost sm"; btn.textContent="选择…";
+          const fi = document.createElement("input"); fi.type="file";
+          fi.addEventListener("change", async ()=>{
+            if (!fi.files.length) return;
+            toast("文件传输中…");
+            const fd = new FormData(); fd.append("file", fi.files[0]);
+            try{
+              const r = await fetch("/api/upload", {method:"POST", body:fd});
+              const d = await r.json();
+              if (d.ok){ cfg[p.k] = d.path; inp.value = d.path; saveStepCfg(); toast("✔ 文件已就绪（EXE 所在电脑）"); }
+              else toast("✘ "+d.error, true);
+            }catch(e){ toast("✘ 上传失败: "+e.message, true); }
+          });
+          btn.addEventListener("click", ()=>fi.click());
+          row.appendChild(inp); row.appendChild(btn); row.appendChild(fi);
+          fld.appendChild(row);
+        } else {
+          fld.innerHTML = `<label>${p.label}</label>`;
+          const inp = document.createElement("input"); inp.type="text";
+          if (p.wide) inp.className = "wide";
+          if (p.ph) inp.placeholder = p.ph;
+          inp.value = cfg[p.k]??"";
+          inp.addEventListener("change", ()=>{ cfg[p.k]=inp.value; saveStepCfg(); refreshParams(st); });
+          fld.appendChild(inp);
+        }
+        fld.style.display = "none";
+        pr.appendChild(fld);
+      }
+      card.appendChild(pr);
+      refreshParams(st, card);
+    }
+    card.querySelector('[data-act=enable]').addEventListener("change", e=>{ cfg.enabled = e.target.checked; saveStepCfg(); });
+    card.querySelector('[data-act=force]').addEventListener("change", e=>{ cfg.force = e.target.checked; saveStepCfg(); });
+    box.appendChild(card);
+  });
+}
+function refreshParams(st, cardEl){
+  cardEl = cardEl || [...$("#steps").children].find(c=>c.querySelector(`#badge_${st.id}`));
+  if (!cardEl) return;
+  const cfg = stepCfg[st.id];
+  cardEl.querySelectorAll(".fld[data-pk]").forEach(f=>{
+    const p = (st.params||[]).find(x=>x.k===f.dataset.pk);
+    f.style.display = (!p || !p.when || p.when(cfg)) ? "" : "none";
+  });
+  const chip = cardEl.querySelector("#req_chip");
+  if (chip){
+    const nokm = cfg_mode()==="nokm";
+    chip.className = "req-chip " + (nokm?"must":"opt");
+    chip.textContent = nokm ? "必装" : "可选";
+  }
+}
+function cfg_mode(){ return stepCfg.install_driver.mode; }
+
+function stepPayload(ids){
+  const steps = {};
+  for (const st of STEPS){
+    if (!ids.includes(st.id)) continue;
+    const cfg = stepCfg[st.id];
+    const out = {enabled:true, force:!!cfg.force};
+    for (const p of (st.params||[])) out[p.k] = cfg[p.k];
+    steps[st.id] = out;
+  }
+  return steps;
+}
+async function runOne(id){
+  if (id==="p2p_modules" && cfg_mode()==="nokm" && !stepCfg.install_driver.enabled){
+    // 仅提示，不阻塞
+  }
+  await startInstall(stepPayload([id]), `开始执行: ${STEPS.find(s=>s.id===id).title}`);
+}
+async function runAll(){
+  const ids = STEPS.filter(s=>stepCfg[s.id].enabled).map(s=>s.id);
+  if (!ids.length){ toast("请先勾选要执行的步骤", true); return; }
+  if (cfg_mode()==="nokm" && ids.includes("install_driver") && !ids.includes("p2p_modules")){
+    toast("提示：驱动为 --no-kernel-modules 模式，建议勾选「安装 P2P 内核模块」", true);
+  }
+  await startInstall(stepPayload(ids), `开始执行 ${ids.length} 个步骤`);
+}
+async function startInstall(steps, msg){
+  if (!(await askConfirm(msg + "，确认执行？"))) return;
+  clearTerm(); lastProgress = 0; $("#prog_bar").style.width = "0";
+  const cfg = connectCfg();
+  const r = await api("/api/install", {connect: cfg, steps, upload_dir:"/tmp/p2p_setup"});
+  if (!r.ok){ toast("✘ "+r.error, true); return; }
+  lastTaskCfg = cfg; lastTaskKind = "install";
+  setButtons(true); toast(msg); startPolling();
+}
+async function envCheck(){
+  toast("环境体检中…");
+  try{
+    const d = await api("/api/check", {connect: connectCfg()});
+    if (!d.ok){ toast("✘ "+d.error, true); return; }
+    const f = (v)=>v&&v!=="NONE"?v:"未安装";
+    const lines = [
+      `驱动: ${f(d.DRIVER)}   内核模块: ${f(d.KMOD)}`,
+      `CUDA: ${f(d.CUDA)}   NCCL: ${f(d.NCCL)}`,
+      `Anaconda3: ${f(d.CONDA)}   nccl-tests: ${d.NCCLET==="YES"?"已编译":"未编译"}`,
+      `nouveau: ${+d.NOUVEAU_LOADED ? "已加载(未禁用)" : (d.NOUVEAU_CONF==="YES"?"已禁用✔":"未加载但无配置")}`,
+      `ACS 开启设备: ${d.ACS_PLUS==="UNKNOWN"?"无法检测(缺 lspci)":d.ACS_PLUS+" 个"}   内核锁定: ${d.HOLDS?d.HOLDS:"无"}`,
+      `缺失依赖: ${d.MISSING_DEPS?.trim() || "无 ✔"}`,
+    ];
+    termWrite("\n════ 环境体检报告 ════\n" + lines.join("\n") + "\n══════════════════════\n");
+    // 更新步骤徽标
+    const set = (id, installed, detail)=>{
+      const b = document.querySelector(`#badge_${id}`);
+      if (b && !["running","precheck"].includes(b._st||"")){
+        renderBadge(b, {state: installed?"skip":"idle", detail});
+        b._st = installed?"skip":"idle";
+      }
+    };
+    set("install_driver", d.DRIVER && d.DRIVER!=="NONE", "当前 " + d.DRIVER);
+    set("p2p_modules", d.KMOD && d.KMOD!=="NONE", "模块 " + d.KMOD);
+    set("install_cuda", d.CUDA && d.CUDA!=="NONE", "当前 " + d.CUDA);
+    set("install_nccl", d.NCCL && d.NCCL!=="NONE", "当前 " + d.NCCL);
+    set("install_anaconda", d.CONDA && d.CONDA!=="NONE", d.CONDA);
+    set("nccl_tests", d.NCCLET==="YES", "");
+    set("disable_nouveau", !+d.NOUVEAU_LOADED && d.NOUVEAU_CONF==="YES", "");
+    set("disable_acs", d.ACS_PLUS!=="UNKNOWN" && +d.ACS_PLUS===0, "");
+    set("hold_kernel", /linux-image/.test(d.HOLDS||""), "");
+    set("build_deps", !(d.MISSING_DEPS||"").trim(), "");
+    toast("✔ 体检完成，结果已写入终端");
+  }catch(e){ toast("✘ "+e.message, true); }
+}
+async function verifyP2P(){
+  if (!(await askConfirm("将在服务器执行 all_reduce_perf 验证 P2P（耗时数分钟），确认？"))) return;
+  clearTerm(); lastProgress = 0; $("#prog_bar").style.width = "0";
+  const cfg = connectCfg();
+  const r = await api("/api/verify", {connect: cfg, tests_dir:""});
+  if (!r.ok){ toast("✘ "+r.error, true); return; }
+  lastTaskCfg = cfg; lastTaskKind = "verify";
+  setButtons(true); toast("开始 P2P 验证"); startPolling();
+}
+async function stopTask(){
+  if (!(await askConfirm("确认停止当前任务？"))) return;
+  await api("/api/cancel", {});
+  toast("已发送停止请求");
+}
+/* 任务运行中，终端上按 Ctrl+C 直接打断（等同「■ 停止」） */
+$("#terminal").addEventListener("keydown", async (e)=>{
+  if (!(e.ctrlKey && (e.key === "c" || e.key === "C")) ) return;
+  // 有选中文本时优先复制，不触发打断
+  const sel = window.getSelection();
+  if (sel && sel.toString().length > 0) return;
+  const st = ($("#task_state").textContent || "");
+  if (!st.includes("执行中") && !st.includes("预检")) return;
+  e.preventDefault();
+  termWrite("\n^C 正在打断服务器上的任务…\n");
+  await api("/api/cancel", {});
+  toast("^C 已发送停止请求");
+});
+$("#terminal").setAttribute("tabindex", "0");
+$("#terminal").setAttribute("title", "任务运行中按 Ctrl+C 可打断；选中文本后 Ctrl+C 为复制");
+async function rebootServer(){
+  if (!(await askConfirm("⚠ 确认重启服务器？\n（关闭 ACS 为运行时设置，重启后需要重新执行该步骤）"))) return;
+  const r = await api("/api/reboot", {connect: connectCfg()});
+  if (r.ok) termWrite("\n[重启] " + (r.msg||"重启命令已发送") + "\n");
+  toast("重启命令已发送");
+}
+
+loadConn(); loadHistory(); loadStepCfg(); renderSteps(); setTaskState("idle");
+// 一次性迁移：CUDA 步骤安装方式默认改为官方 apt 仓库（旧配置为 local/online）
+if (!localStorage.getItem("p2p_migrated_cuda_apt")) {
+  if (stepCfg.install_cuda) stepCfg.install_cuda.source = "apt";
+  localStorage.setItem("p2p_migrated_cuda_apt", "1");
+  saveStepCfg(); renderSteps();
+}
+
+/* ================================================= vLLM 服务 */
+const vval = id => (document.getElementById(id).value || "").trim();
+function vllmCfg(){
+  return { model_path: vval("v_model_path"), conda: vval("v_conda"), served: vval("v_served"),
+           bench_model: vval("v_bench_model"), port: vval("v_port") || "8000",
+           maxlen: vval("v_maxlen"), seqs: vval("v_seqs"), gpuutil: vval("v_gpuutil"), tp: vval("v_tp"),
+           cmd: $("#v_cmd").value, p: vval("v_p"), m: vval("v_m"), outdir: vval("v_outdir"),
+           tcmd: $("#v_tcmd").value,
+           rbase: vval("v_rbase"), rsub: vval("v_rsub"), rcsv: vval("v_rcsv") };
+}
+function saveVllmCfg(){ localStorage.setItem("p2p_vllm", JSON.stringify(vllmCfg())); }
+function loadVllmCfg(){
+  let s = null;
+  try{ s = JSON.parse(localStorage.getItem("p2p_vllm")||"null"); }catch(e){}
+  const pairs = [["model_path","v_model_path"],["conda","v_conda"],["served","v_served"],
+    ["bench_model","v_bench_model"],["port","v_port"],["maxlen","v_maxlen"],["seqs","v_seqs"],
+    ["gpuutil","v_gpuutil"],["tp","v_tp"],["p","v_p"],["m","v_m"],["outdir","v_outdir"],
+    ["rbase","v_rbase"],["rsub","v_rsub"],["rcsv","v_rcsv"]];
+  if (s){
+    for (const [k, id] of pairs)
+      if (s[k] !== undefined) document.getElementById(id).value = s[k];
+    if (s.cmd) $("#v_cmd").value = s.cmd;
+    if (s.tcmd) $("#v_tcmd").value = s.tcmd;
+  }
+  if (!$("#v_cmd").value.trim()) genVllmCmd();
+  if (!$("#v_tcmd").value.trim()) genTestCmd();
+}
+function genVllmCmd(){
+  const c = vllmCfg();
+  const serve = `vllm serve ${c.model_path} --served-model-name ${c.served} --port ${c.port} ` +
+    `--max-model-len ${c.maxlen} --max-num-seqs=${c.seqs} --gpu-memory-utilization ${c.gpuutil} --tensor-parallel-size ${c.tp}`;
+  $("#v_cmd").value = c.conda ? c.conda + "\n" + serve : serve;
+  saveVllmCfg();
+}
+function genTestCmd(){
+  const c = vllmCfg();
+  const pre = c.conda ? c.conda + "\n" : "";
+  $("#v_tcmd").value = pre + `python /opt/qwen3_bench.py --p ${c.p} --m ${c.m} --port ${c.port}`;
+  saveVllmCfg();
+}
+async function startVllm(){
+  const c = vllmCfg();
+  if (!c.cmd.trim()){ toast("启动命令为空", true); return; }
+  if (!(await askConfirm("确认在服务器上启动 vLLM？\n（会先自动停止已在运行的 vllm serve）"))) return;
+  toast("正在启动 vLLM…");
+  try{
+    const r = await api("/api/vllm/start", {connect: connectCfg(), command: c.cmd, port: c.port});
+    if (!r.ok){ toast("✘ " + r.error, true); return; }
+    termWrite("\n──── vLLM 启动 ────\n" + (r.output||"") + "\n" + (r.msg||"") + "\n");
+    toast("✔ 启动命令已发出，稍后点「状态 / 日志」查看进度");
+    setTimeout(vllmStatus, 10000);
+  }catch(e){ toast("✘ " + e.message, true); }
+}
+async function stopVllm(){
+  if (!(await askConfirm("确认停止服务器上的 vLLM？"))) return;
+  toast("正在停止…");
+  try{
+    const r = await api("/api/vllm/stop", {connect: connectCfg()});
+    if (!r.ok){ toast("✘ " + r.error, true); return; }
+    termWrite("\n──── vLLM 停止 ────\n" + (r.output||"") + "\n");
+    toast("✔ 已停止");
+  }catch(e){ toast("✘ " + e.message, true); }
+}
+async function vllmStatus(){
+  const c = vllmCfg();
+  try{
+    const r = await api("/api/vllm/status", {connect: connectCfg(), port: c.port});
+    if (!r.ok){ toast("✘ " + r.error, true); return; }
+    termWrite("\n──── vLLM 状态 / 日志 ────\n" + (r.output||"") + "\n");
+  }catch(e){ toast("✘ " + e.message, true); }
+}
+async function deployScript(){
+  const c = vllmCfg();
+  toast("正在部署测试脚本…");
+  try{
+    const r = await api("/api/vllm/deploy_script", {connect: connectCfg(), model: c.bench_model,
+      tokenizer_path: c.model_path, output_dir: c.outdir});
+    if (!r.ok){ toast("✘ " + r.error, true); return; }
+    termWrite("\n──── 部署测试脚本 ────\n" + (r.output||"") + "\n");
+    toast("✔ " + (r.msg||"部署完成"));
+  }catch(e){ toast("✘ " + e.message, true); }
+}
+async function startBench(command, title, opts = {}){
+  if (!command.trim()){ toast("命令为空", true); return; }
+  clearTerm(); lastProgress = 0; $("#prog_bar").style.width = "0";
+  const cfg = connectCfg();
+  const r = await api("/api/bench", {connect: cfg, command, title});
+  if (!r.ok){ toast("✘ " + r.error, true); return; }
+  lastTaskCfg = cfg; lastTaskKind = "bench";
+  lastBenchCapture = !!opts.capture; lastBenchOutdir = opts.outdir || "";
+  setButtons(true); toast(title + "（终端实时输出，可点「■ 停止」或 Ctrl+C 随时打断）"); startPolling();
+}
+async function captureOutdir(cfg, base){
+  // 任务结束/打断后，自动定位本次结果目录并同步到 D 区
+  try{
+    base = base || vval("v_outdir");
+    if (false){ }
+    if (!base) return;
+    const r = await api("/api/latest_subdir", {connect: cfg, base_dir: base});
+    if (r.ok && r.path){
+      termWrite("\n本次结果目录: " + r.path + "\n（D 区「结果根目录」已同步，直接「运行结果提取」即可）\n");
+      $("#v_rbase").value = r.path;
+      $("#v_rsub").value = vval("v_served");
+      saveVllmCfg();
+      toast("✔ 本次结果目录已同步到 D 区");
+    } else {
+      termWrite("\n（未在 " + base + " 下找到结果目录）\n");
+    }
+  }catch(e){}
+}
+async function installEvalscope(){
+  if (!(await askConfirm("将在服务器执行 pip3 install -U evalscope（可能较久，已配置代理则走代理），确认？"))) return;
+  await startBench("pip3 install -U evalscope", "安装 evalscope");
+}
+async function runBench(){
+  const c = vllmCfg();
+  if (!(await askConfirm("确认运行性能测试？请确认 vLLM 服务已就绪、测试脚本已部署。"))) return;
+  await startBench($("#v_tcmd").value, "vLLM 性能测试", {capture: true, outdir: vval("v_outdir")});
+}
+
+/* ── 结果提取（D） ── */
+async function deployResults(){
+  const c = vllmCfg();
+  toast("正在部署结果提取脚本…");
+  try{
+    const r = await api("/api/vllm/deploy_results", {connect: connectCfg(),
+      base_dir: c.rbase, subfolder: c.rsub, csv_path: c.rcsv});
+    if (!r.ok){ toast("✘ " + r.error, true); return; }
+    termWrite("\n──── 部署结果脚本 ────\n" + (r.output||"") + "\n");
+    toast("✔ " + (r.msg||"部署完成"));
+  }catch(e){ toast("✘ " + e.message, true); }
+}
+async function runResults(){
+  const c = vllmCfg();
+  if (!(await askConfirm("确认运行结果提取？（自动取最新一次测试输出，需要 pandas）"))) return;
+  const act = c.conda ? c.conda + "\n" : "";
+  await startBench(act + "python /opt/qwen3_results.py", "结果提取");
+}
+async function downloadCsv(){
+  const c = vllmCfg();
+  const path = c.rcsv || "/opt/benchmark_llama.csv";
+  toast("正在打开保存对话框…");
+  try{
+    const r = await api("/api/file/save_as", {connect: connectCfg(), path});
+    if (r.cancelled){ toast("已取消"); return; }
+    if (!r.ok){ toast("✘ " + (r.error||"下载失败"), true); return; }
+    toast("✔ 已保存到本机: " + r.local + "（" + r.size + " 字节）");
+    termWrite("\n[下载] " + path + " → " + r.local + " (" + r.size + " 字节)\n");
+  }catch(e){ toast("✘ " + e.message, true); }
+}
+
+/* ================================================= NCCL 测试 */
+function nval(id){ return (document.getElementById(id).value || "").trim(); }
+function ncclCfg(){
+  return { test: nval("n_test"), dir: nval("n_dir"), gpus: nval("n_gpus"),
+           ng: nval("n_ng"), b: nval("n_b"), e: nval("n_e"), env: nval("n_env"),
+           hosts: nval("n_hosts"), nic: nval("n_nic"), bin: nval("n_bin"),
+           scmd: $("#n_scmd").value, mcmd: $("#n_mcmd").value };
+}
+function saveNcclCfg(){ localStorage.setItem("p2p_nccl", JSON.stringify(ncclCfg())); }
+function loadNcclCfg(){
+  let s = null;
+  try{ s = JSON.parse(localStorage.getItem("p2p_nccl")||"null"); }catch(e){}
+  if (s){
+    for (const [k, id] of [["test","n_test"],["dir","n_dir"],["gpus","n_gpus"],["ng","n_ng"],["b","n_b"],["e","n_e"],["env","n_env"],["hosts","n_hosts"],["nic","n_nic"],["bin","n_bin"]])
+      if (s[k] !== undefined) document.getElementById(id).value = s[k];
+    if (s.scmd) $("#n_scmd").value = s.scmd;
+    if (s.mcmd) $("#n_mcmd").value = s.mcmd;
+  }
+  if (!$("#n_scmd").value.trim()) genSingleCmd();
+  if (!$("#n_mcmd").value.trim()) genMultiCmd();
+}
+function ncclConda(env){
+  if (!env) return "";
+  return `source $(ls -d /opt/anaconda3 /root/anaconda3 /root/miniconda3 ~/anaconda3 ~/miniconda3 2>/dev/null | head -1)/etc/profile.d/conda.sh && conda activate ${env}\n`;
+}
+async function genSingleCmd(){
+  const h = await ensureHome();
+  const c = ncclCfg();
+  if (!c.dir) c.dir = h + "/long/nccl-tests/build";
+  $("#n_scmd").value = ncclConda(c.env) +
+    `export NCCL_P2P_LEVEL=SYS NCCL_DEBUG=VERSION CUDA_VISIBLE_DEVICES=${c.gpus}\n` +
+    `${c.dir}/${c.test} -b ${c.b} -e ${c.e} -f 2 -g ${c.ng}`;
+  saveNcclCfg();
+}
+async function genMultiCmd(){
+  const h = await ensureHome();
+  const c = ncclCfg();
+  if (!c.bin) c.bin = `${h}/long/nccl-tests/build/all_reduce_perf`;
+  const slots = c.hosts.split(",").map(h => parseInt((h.split(":")[1] || "8")));
+  const np = slots.reduce((a, b) => a + (isNaN(b) ? 8 : b), 0);
+  const n = isNaN(slots[0]) ? 8 : slots[0];
+  $("#n_mcmd").value = [
+    "mpirun --allow-run-as-root \\",
+    `  -np ${np} \\`,
+    `  -N ${n} \\`,
+    `  -H ${c.hosts} \\`,
+    "  --bind-to numa \\",
+    "  --mca pml ob1 \\",
+    "  --mca btl ^openib \\",
+    `  --mca btl_tcp_if_include ${c.nic} \\`,
+    "  -x NCCL_IB_DISABLE=0 \\",
+    '  -x NCCL_IB_HCA="mlx5_0,mlx5_1,mlx5_2,mlx5_3,mlx5_4,mlx5_5,mlx5_6,mlx5_7" \\',
+    "  -x NCCL_IB_GID_INDEX=3 \\",
+    `  -x NCCL_SOCKET_IFNAME=${c.nic} \\`,
+    "  -x NCCL_NET_GDR_LEVEL=5 \\",
+    "  -x NCCL_P2P_LEVEL=SYS \\",
+    "  -x NCCL_CROSS_NIC=1 \\",
+    "  -x NCCL_MIN_NCHANNELS=16 \\",
+    "  -x NCCL_MAX_NCHANNELS=32 \\",
+    "  -x NCCL_ALGO=Tree,Ring \\",
+    `  ${c.bin} \\`,
+    "  -b 1G -e 8G -f 2 -g 1 -n 50 -w 10"
+  ].join("\n");
+  saveNcclCfg();
+}
+async function findNcclBin(dirId, nameId){
+  const c = ncclCfg();
+  let base, name;
+  if (dirId){ base = vval(dirId) || (window._rhome ? window._rhome + "/long/nccl-tests" : "~/long/nccl-tests"); name = vval(nameId) || "all_reduce_perf"; }
+  else { base = (vval(nameId).split("/").slice(0, -1).join("/") || "/root"); name = vval(nameId).split("/").pop() || "all_reduce_perf"; }
+  const find = `echo '── 搜索 ${name} ──'; find ${base} -maxdepth 3 -name "${name}" -type f 2>/dev/null | head -5; ` +
+    `find /root /opt ${window._rhome || "$HOME"}/long -maxdepth 4 -name "${name}" -type f 2>/dev/null | head -5; ` +
+    `echo '（以上为搜索到的完整路径，复制到「目录/二进制路径」输入框）'`;
+  await startBench(find, "查找测试程序");
+}
+async function checkNodesGpu(){
+  const c = ncclCfg();
+  if (!c.hosts){ toast("请先填写主机列表", true); return; }
+  const hosts = c.hosts.split(",").map(h => h.split(":")[0].trim()).filter(Boolean);
+  const cmd = hosts.map(h =>
+    `echo '── ${h} ──'; ` +
+    `ssh -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=no ${h} ` +
+    `"nvidia-smi --query-gpu=index,memory.used,memory.total --format=csv,noheader 2>/dev/null | head -8; " +
+     "nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv,noheader 2>/dev/null | head -6" ` +
+    `|| echo '  （无法连接，检查免密 SSH）'`).join("; ");
+  await startBench(cmd, "检查各节点 GPU 占用");
+}
+/* ── 测试过程截图：把本次 NCCL 运行输出渲染成 PNG ── */
+function lastNcclText(){
+  const start = termBuf.lastIndexOf("══ NCCL 通讯测试 ══");
+  if (start < 0) return null;
+  let seg = termBuf.slice(start);
+  const done = seg.lastIndexOf("\n__P2P_BENCH_DONE__");
+  if (done > 0) seg = seg.slice(0, done);
+  const lines = seg.split("\n")
+    .filter(l => l.length <= 300 && !/__P2P_BENCH_DONE__/.test(l))                 // 去掉 base64 长行
+    .map(l => l.replace(/\r/g, "").trimEnd());
+  while (lines.length && !lines[lines.length-1].trim()) lines.pop();
+  if (lines.length > 400) lines = ["（前段日志已省略）", ...lines.slice(-400)];
+  return lines.join("\n");
+}
+function renderTextPng(text){
+  const lines = text.split("\n");
+  const font = "14px 'Cascadia Mono', Consolas, monospace";
+  const meas = document.createElement("canvas").getContext("2d");
+  meas.font = font;
+  const cw = meas.measureText("0").width || 8.4;
+  const pad = 30, headH = 70, lineH = 20, maxW = 2200;
+  const maxChars = Math.floor((maxW - pad*2) / cw);
+  const trunc = lines.map(l => l.length > maxChars ? l.slice(0, maxChars - 3) + "…" : l);
+  let tw = 0; trunc.forEach(l => tw = Math.max(tw, meas.measureText(l).width));
+  const W = Math.min(Math.ceil(tw) + pad*2, maxW);
+  const H = headH + trunc.length * lineH + pad;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const g = cv.getContext("2d");
+  g.fillStyle = "#070b16"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#d3bc8e"; g.font = "bold 18px 'Microsoft YaHei', sans-serif";
+  g.fillText("◆ NCCL 通讯测试结果 · " + new Date().toLocaleString("zh-CN"), pad, 36);
+  g.strokeStyle = "rgba(211,188,142,.5)"; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(pad, 50); g.lineTo(W - pad, 50); g.stroke();
+  g.font = font; g.fillStyle = "#c9d4e8";
+  trunc.forEach((l, i) => g.fillText(l, pad, headH + 14 + i * lineH));
+  return cv.toDataURL("image/png");
+}
+async function saveNcclShot(){
+  const seg = lastNcclText();
+  if (!seg || !seg.trim()){ toast("未找到本次 NCCL 测试输出，请先运行一次测试", true); return; }
+  const dataUrl = renderTextPng(seg);
+  const ts = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+  try{
+    const dlg = await api("/api/local/save_dialog", {default_name: "nccl_" + ts + ".png", ext: "png", filter_label: "PNG 图片"});
+    if (dlg.cancelled){ toast("已取消"); return; }
+    if (!dlg.ok){ toast("✘ " + dlg.error, true); return; }
+    const r = await api("/api/local/save_bytes", {dataUrl, path: dlg.path});
+    if (!r.ok){ toast("✘ " + r.error, true); return; }
+    toast("✔ 截图已保存: " + r.path + "（" + r.size + " 字节）");
+  }catch(e){ toast("✘ " + e.message, true); }
+}
+async function runNccl(boxId){
+  const cmd = document.getElementById(boxId).value;
+  if (!cmd.trim()){ toast("请先生成或填写命令", true); return; }
+  // 运行前检测：GPU 上是否有残留的 vLLM 进程（会干扰通讯测试结果）
+  try{
+    const c = vllmCfg();
+    const r = await api("/api/vllm/status", {connect: connectCfg(), port: c.port});
+    if (r.ok && /VLLM::/.test(r.output||"")){
+      const yes = await askConfirm("检测到 GPU 上仍有 vLLM 进程残留（会干扰 NCCL 测试结果）。\n是否先停止 vLLM 再运行测试？");
+      if (yes){
+        const s = await api("/api/vllm/stop", {connect: connectCfg()});
+        if (s.ok) termWrite("\n──── 清理残留 vLLM ────\n" + (s.output||"") + "\n");
+      }
+    }
+  }catch(e){}
+  await startBench(cmd, "NCCL 通讯测试");
+}
+loadNcclCfg();
+loadVllmCfg();
+loadVllmCfg();
+</script>
+</body>
+</html>

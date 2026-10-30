@@ -1,0 +1,8 @@
+build/
+dist_new/
+dist/
+__pycache__/
+_uploads/
+.gpup2p_instance.lock
+_error.log
+*.pyc
