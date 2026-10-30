@@ -175,7 +175,7 @@ SYS-751GE-TNRT
 Ubuntu 22.04.5 LTS
 5.15.0-122-generic
 <<<IP>>>
-10.10.3.153 192.168.1.10
+192.0.2.10 192.168.1.10
 <<<CPU>>>
 Model name:                      AMD EPYC 9A75 64-Core Processor
 Socket(s):                       2
@@ -209,18 +209,18 @@ release 13.2
 <<<UPTIME>>>
 172800.5 340000.2
 <<<BMC>>>
-    IP Address  : 10.10.3.143
+    IP Address  : 192.0.2.30
 <<<END>>>
 """
     d = A.parse_collect(fake)
     exp = {
         "hostname": "pro6000-3", "name": "SYS-751GE-TNRT",
         "os": "Ubuntu 22.04.5 LTS", "kernel": "5.15.0-122-generic",
-        "ip": "10.10.3.153",
+        "ip": "192.0.2.10",
         "gpu_count": 2, "gpu_mem_gb": 192.0, "driver": "595.71.05",
         "cuda": "13.2", "nccl": "2.29.3",
         "power_draw": 3604, "power_limit": 1200,
-        "uptime_days": 2.0, "bmc": "10.10.3.143",
+        "uptime_days": 2.0, "bmc": "192.0.2.30",
         "disk_total_gb": 1407, "mem_total_gb": 315.0, "dimm_count": 2,
     }
     bad = []

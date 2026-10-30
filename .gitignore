@@ -6,3 +6,4 @@ _uploads/
 .gpup2p_instance.lock
 _error.log
 *.pyc
+.zcode/

@@ -225,7 +225,7 @@ footer{text-align:center;color:var(--txt-dim);font-size:11.5px;margin-top:26px;l
       <div class="fld"><label>历史连接</label>
         <select id="c_hist" onchange="applyHistory()" style="min-width:190px"><option value="">— 选择历史记录 —</option></select>
       </div>
-      <div class="fld"><label>服务器 IP</label><input id="c_host" placeholder="10.10.3.153" style="min-width:170px"></div>
+      <div class="fld"><label>服务器 IP</label><input id="c_host" placeholder="192.0.2.10" style="min-width:170px"></div>
       <div class="fld"><label>SSH 端口</label><input id="c_port" value="22" style="width:80px"></div>
       <div class="fld"><label>用户名</label><input id="c_user" value="root" style="width:110px"></div>
       <div class="fld"><label>认证方式</label>
@@ -423,7 +423,7 @@ footer{text-align:center;color:var(--txt-dim);font-size:11.5px;margin-top:26px;l
         <button class="btn" onclick="runNccl('n_mcmd')">▶ 运行</button></div>
       </div>
       <div class="step-params">
-        <div class="fld"><label>主机列表 (-H)</label><input id="n_hosts" value="10.10.3.153:8,10.10.3.154:8" style="min-width:240px" oninput="saveNcclCfg()"></div>
+        <div class="fld"><label>主机列表 (-H)</label><input id="n_hosts" value="192.0.2.10:8,192.0.2.20:8" style="min-width:240px" oninput="saveNcclCfg()"></div>
         <div class="fld"><label>网卡名</label><input id="n_nic" value="enp225s0f0" style="min-width:140px" oninput="saveNcclCfg()"></div>
         <div class="fld"><label>二进制路径</label><input id="n_bin" value="" placeholder="~/long/nccl-tests/build/all_reduce_perf" style="min-width:260px" oninput="saveNcclCfg()"></div>
       </div>
