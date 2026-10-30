@@ -63,3 +63,7 @@ python app.py
 - 目标系统：Ubuntu 22.04 x86_64 为主（兼容 24.04 源配置），需 root 或 sudo 权限
 - BIOS 建议手动确认：Resize Bar=开、IOMMU=关、Workload Profile=AI Optimized
 - CUDA 在线安装需手填 runfile 完整 URL（其文件名含配套驱动号，无法按版本号自动拼接）；本地包方式无此限制
+
+## 相关文档
+
+- [双机 vLLM 启动指南](docs/vllm-dual-node-guide.html) — 双机 Tensor-Parallel 部署与 NCCL 多机测试说明

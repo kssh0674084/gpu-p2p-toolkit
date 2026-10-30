@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>双机 vLLM 启动指南（192.0.2.10 + 192.0.2.20）</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1f2430; --muted:#6b7280;
+    --line:#e3e6ea; --accent:#0f62fe; --accent-soft:#e8f0fe;
+    --ok:#0e7a3d; --ok-soft:#e6f4ec; --warn:#9a6700; --warn-soft:#fdf3e0;
+    --err:#b3261e; --err-soft:#fbeae9; --code-bg:#0f172a; --code-ink:#e2e8f0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",system-ui,sans-serif;}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 20px 80px}
+  header.hero{background:linear-gradient(135deg,#0b1f4b,#123a8f);color:#fff;
+       border-radius:14px;padding:30px 30px 26px;margin-bottom:26px}
+  header.hero h1{margin:0 0 6px;font-size:26px;line-height:1.35}
+  header.hero p{margin:0;opacity:.85}
+  .badges{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+  .badge{font-size:12.5px;padding:3px 12px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28)}
+  .badge.ok{background:var(--ok);border-color:var(--ok)}
+  h2{font-size:20px;margin:38px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+  h2 .step-no{display:inline-block;background:var(--accent);color:#fff;border-radius:8px;
+       font-size:14px;padding:1px 10px;margin-right:9px;vertical-align:2px}
+  h3{font-size:16.5px;margin:24px 0 10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin:14px 0}
+  .kv{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+  .kv .k{font-size:12.5px;color:var(--muted)}
+  .kv .v{font-weight:600;font-size:14.5px;word-break:break-all}
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:14px 16px;
+      overflow-x:auto;font:13px/1.65 "Cascadia Code",Consolas,"Courier New",monospace;margin:10px 0}
+  pre .c{color:#7ee1a6}
+  code{background:#eceef2;border-radius:5px;padding:1px 6px;font-size:13px;
+       font-family:Consolas,"Courier New",monospace}
+  pre code{background:none;padding:0}
+  .cmd-head{display:flex;justify-content:space-between;align-items:center;margin:14px 0 -6px}
+  .cmd-head .tag{font-size:12.5px;color:var(--muted)}
+  .why{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;
+       padding:10px 16px;margin:12px 0;font-size:14px}
+  .why b:first-child{color:var(--accent)}
+  .warnbox{border-left:4px solid var(--warn);background:var(--warn-soft);border-radius:0 10px 10px 0;
+       padding:10px 16px;margin:12px 0;font-size:14px}
+  .okbox{border-left:4px solid var(--ok);background:var(--ok-soft);border-radius:0 10px 10px 0;
+       padding:10px 16px;margin:12px 0;font-size:14px}
+  .errbox{border-left:4px solid var(--err);background:var(--err-soft);border-radius:0 10px 10px 0;
+       padding:10px 16px;margin:12px 0;font-size:14px}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
+       border-radius:10px;overflow:hidden;font-size:14px;margin:12px 0}
+  th,td{border-bottom:1px solid var(--line);padding:9px 13px;text-align:left;vertical-align:top}
+  th{background:#f0f2f5;font-size:13.5px}
+  tr:last-child td{border-bottom:none}
+  td code{white-space:nowrap}
+  .toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 10px}
+  .toc a{color:var(--accent);text-decoration:none;display:block;padding:3px 0;font-size:14.5px}
+  .toc a:hover{text-decoration:underline}
+  .arch{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch;margin:16px 0}
+  .node{border:2px solid var(--accent);border-radius:12px;padding:14px;background:var(--card)}
+  .node.worker{border-color:var(--ok)}
+  .node h4{margin:0 0 4px;font-size:15px}
+  .node .role{font-size:12.5px;font-weight:600;color:#fff;background:var(--accent);
+       display:inline-block;border-radius:999px;padding:1px 11px;margin-bottom:8px}
+  .node.worker .role{background:var(--ok)}
+  .node ul{margin:6px 0 0;padding-left:18px;font-size:13.5px;color:var(--muted)}
+  .link{display:flex;flex-direction:column;justify-content:center;gap:10px;text-align:center}
+  .link .pipe{font-size:12.5px;background:#f0f2f5;border:1px dashed var(--muted);border-radius:9px;padding:7px 10px}
+  .flow{counter-reset:fs;display:flex;flex-direction:column;gap:6px;margin:12px 0}
+  .flow .fi{counter-increment:fs;display:flex;gap:12px;align-items:flex-start;padding:9px 14px;
+       background:var(--card);border:1px solid var(--line);border-radius:10px}
+  .flow .fi::before{content:counter(fs);flex:0 0 26px;height:26px;border-radius:50%;background:var(--accent);
+       color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:2px}
+  details{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:10px 0}
+  details summary{cursor:pointer;font-weight:600;font-size:14.5px}
+  details[open]{padding-bottom:14px}
+  .copy{background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;
+       font-size:12px;padding:2px 10px;cursor:pointer}
+  .copy:hover{color:#fff}
+  footer{margin-top:44px;padding-top:14px;border-top:1px solid var(--line);
+       font-size:13px;color:var(--muted)}
+  @media (max-width:760px){.arch{grid-template-columns:1fr}.link{flex-direction:row}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>双机 vLLM 启动指南</h1>
+  <p>192.0.2.10（server03 / head）&nbsp;+&nbsp;192.0.2.20（server04 / worker）&nbsp;·&nbsp;16 × RTX PRO 6000 Blackwell</p>
+  <div class="badges">
+    <span class="badge ok">2026-10-27 全流程实测通过</span>
+    <span class="badge">vLLM 0.29.0</span><span class="badge">Ray 2.57.0</span>
+    <span class="badge">PyTorch 2.13.0 + CUDA 13.0</span><span class="badge">NCCL 2.29.7</span>
+  </div>
+</header>
+
+<div class="card">
+  <b>一句话总结：</b>重启后必须按顺序手动执行
+  <b>① 起 Ray head（.153）→ ② worker 加入（.154）→ ③ ray status 验证 → ④ 启动 vLLM</b>。
+  Ray 不会开机自启，双机 vLLM 的所有进程都依赖这个集群；每一步里"为什么"都写在了正文灰蓝色框里。
+</div>
+
+<div class="grid">
+  <div class="kv"><div class="k">head 节点</div><div class="v">192.0.2.10（server03）— 8 GPU，跑 Ray head + vLLM 启动命令</div></div>
+  <div class="kv"><div class="k">worker 节点</div><div class="v">192.0.2.20（server04）— 8 GPU，只跑 Ray worker</div></div>
+  <div class="kv"><div class="k">Python 环境</div><div class="v">conda 环境 vllm（两台路径一致：/root/anaconda3/envs/vllm）</div></div>
+  <div class="kv"><div class="k">业务网卡（TCP）</div><div class="v">enp225s0f0（10GbE，192.0.2.x）</div></div>
+  <div class="kv"><div class="k">GPU 通信网卡</div><div class="v">mlx5_0 ~ mlx5_7（8 × 400G IB/RoCE，走 GDRDMA）</div></div>
+  <div class="kv"><div class="k">模型（两台均有本地副本）</div><div class="v">/data/Qwen3-32B、/data/DeepSeek-R1-Distill-Llama-70B</div></div>
+</div>
+
+<div class="arch">
+  <div class="node">
+    <h4>server03 · 192.0.2.10</h4>
+    <span class="role">Ray HEAD + vLLM 驱动进程</span>
+    <ul>
+      <li>GPU 0–7（TP rank 0–7）</li>
+      <li>ray start --head（端口 6379）</li>
+      <li>vllm bench / vllm serve 在这台执行</li>
+    </ul>
+  </div>
+  <div class="link">
+    <div class="pipe">enp225s0f0 · 10GbE<br>Ray 控制面 / NCCL bootstrap</div>
+    <div class="pipe">mlx5_0–7 · 400G IB/RoCE<br>跨机张量并行数据面（GDRDMA）</div>
+  </div>
+  <div class="node worker">
+    <h4>server04 · 192.0.2.20</h4>
+    <span class="role">Ray WORKER</span>
+    <ul>
+      <li>GPU 0–7（TP rank 8–15）</li>
+      <li>ray start --address=192.0.2.10:6379</li>
+      <li>不需要手动跑任何 vllm 命令</li>
+    </ul>
+  </div>
+</div>
+
+<nav class="toc">
+  <b>目录</b>
+  <a href="#s0">0 · 流程总览（重启后要做的全部事情）</a>
+  <a href="#s1">1 · 预检查（每台都做）</a>
+  <a href="#s2">2 · 启动 Ray 集群（先 .153 后 .154）与验证</a>
+  <a href="#s3">3 · 启动 vLLM（离线 bench / 在线 serve 两种方式）</a>
+  <a href="#s4">4 · 停止与清理</a>
+  <a href="#s5">5 · 常见故障排查对照表</a>
+  <a href="#s6">6 · 原理详解：为什么必须这样做</a>
+  <a href="#s7">7 · 附录：2026-10-27 实测记录</a>
+</nav>
+
+<!-- ================= 0 总览 ================= -->
+<h2 id="s0"><span class="step-no">0</span>流程总览（重启后要做的全部事情）</h2>
+<div class="flow">
+  <div class="fi"><div><b>预检查</b>（两台）：GPU 空闲、驱动正常、无残留 ray/vllm 进程、网络互通。原因见 §1。</div></div>
+  <div class="fi"><div><b>.153 起 head</b>：<code>ray start --head --node-ip-address=192.0.2.10 --port=6379</code>，注意先 export NCCL 变量。原因见 §2。</div></div>
+  <div class="fi"><div><b>.154 加入集群</b>：<code>ray start --address=192.0.2.10:6379 --node-ip-address=192.0.2.20</code>，同样先 export NCCL 变量。</div></div>
+  <div class="fi"><div><b>验证</b>（.153）：<code>ray status</code> 必须看到 <b>2 个节点、16 GPU</b>，才能进行下一步。</div></div>
+  <div class="fi"><div><b>只在 .153 启动 vLLM</b>：bench 或 serve，带 <code>--tensor-parallel-size 16 --distributed-executor-backend ray</code>。原因见 §3。</div></div>
+</div>
+<div class="why"><b>为什么重启后要全部重做：</b>Ray 的 head/worker 进程和 vLLM 引擎都是普通用户态进程，重启后全部消失，<b>没有任何开机自启</b>。而且启动顺序有依赖：worker 加入需要 head 的 6379 端口先就绪，vLLM 需要集群里凑够 16 张 GPU 才会开始加载模型。顺序错了不是报错就是挂起。</div>
+
+<!-- ================= 1 预检查 ================= -->
+<h2 id="s1"><span class="step-no">1</span>预检查（两台都要做）</h2>
+
+<div class="cmd-head"><span class="tag">两台各执行一次</span></div>
+<pre><code><span class="c"># 1. GPU 驱动正常且显存为 0（重启后若有残留进程会占用显存导致加载失败）</span>
+nvidia-smi --query-gpu=index,name,memory.used --format=csv,noheader
+
+<span class="c"># 2. 确认没有残留的 ray / vllm 进程</span>
+pgrep -af "raylet|vllm" | grep -v grep
+
+<span class="c"># 3. 端口 6379 没被别的程序占用（只在 .153 上需要为空）</span>
+ss -lntp | grep 6379
+
+<span class="c"># 4. 两台互通（在 .154 上执行，反向同理）</span>
+ping -c 3 192.0.2.10
+
+<span class="c"># 5. 模型目录存在（两台都要有，原因见 §6.4）</span>
+ls /data/Qwen3-32B/config.json
+
+<span class="c"># 6. conda 环境完好、版本一致</span>
+/root/anaconda3/envs/vllm/bin/python -c "import vllm,ray;print(vllm.__version__,ray.__version__)"</code></pre>
+
+<div class="why"><b>为什么要逐项检查：</b>
+① 显存不为 0 说明有残留计算进程，vLLM 按 <code>--gpu-memory-utilization</code> 申请显存时会直接 OOM 失败；
+② 残留的 raylet 会让新集群组不起来（端口冲突或节点注册混乱），必须 <code>ray stop --force</code> 清掉；
+③ 6379 是 Ray 集群的"注册大门"（GCS 端口），被占用则 head 起不来；
+④⑤⑥ 是双机特有的坑——网络不通、某一台缺模型文件、两台 vLLM/Ray 版本不一致，都会在启动中期才报出很难定位的错。</div>
+
+<!-- ================= 2 Ray 集群 ================= -->
+<h2 id="s2"><span class="step-no">2</span>启动 Ray 集群（先 head 后 worker）</h2>
+
+<h3>2.1 在 192.0.2.10 上启动 head 节点</h3>
+<div class="cmd-head"><span class="tag">在 .153（server03）上执行</span></div>
+<pre><code><span class="c"># ★ 第一步：进入 vllm 环境（base 环境里有个不完整的 ray，会报 No module named 'msgpack'）</span>
+conda activate vllm
+
+<span class="c"># 清理可能的残留（没有也不会报错）</span>
+ray stop --force 2&gt;/dev/null
+
+<span class="c"># ★ 关键：NCCL 变量必须在 ray start 之前 export（原因见下方说明）</span>
+export NCCL_DEBUG=INFO \
+       NCCL_IB_DISABLE=0 \
+       NCCL_IB_HCA="mlx5_0,mlx5_1,mlx5_2,mlx5_3,mlx5_4,mlx5_5,mlx5_6,mlx5_7" \
+       NCCL_IB_GID_INDEX=3 \
+       NCCL_SOCKET_IFNAME=enp225s0f0 \
+       NCCL_NET_GDR_LEVEL=5 \
+       NCCL_P2P_LEVEL=SYS \
+       NCCL_CROSS_NIC=1
+
+ray start --head --node-ip-address=192.0.2.10 --port=6379</code></pre>
+
+<div class="why"><b>为什么每个参数都不能省：</b>
+<ul style="margin:6px 0 0;padding-left:20px">
+<li><code>--head</code>：声明这是主节点，在本机启动 GCS（集群注册中心）。</li>
+<li><code>--node-ip-address=192.0.2.10</code>：<b>本环境最容易踩的坑。</b>两台机器都是 K8s 节点，<code>kube-ipvs0</code> 上挂了 30 多个 10.68.x.x IP，还有 flannel.1、cni0、docker0 等虚拟网卡。Ray 自动探测本机 IP 时很可能选中虚拟网卡的地址，head 会把一个<b>别人根本路由不到的 IP</b> 广播出去，worker 永远加不进来。显式指定后强制走物理网卡 enp225s0f0 的地址。</li>
+<li><code>--port=6379</code>：固定 GCS 端口，worker 加入、排错（telnet/ss）都以它为准。</li>
+<li><b>NCCL 变量为什么要在 ray start 前 export：</b>vLLM 的 16 个 worker 进程是 Ray 的 raylet 守护进程派生的，worker 的环境变量<b>继承自 raylet，而不是你后来敲 vllm 命令的那个 shell</b>。所以这些变量必须存在于 raylet 启动时的环境里，否则 worker 里的 NCCL 会拿默认值去选网卡（很可能选到 cni0/flannel），表现为卡在 NCCL 初始化几十分钟不报错。</li>
+</ul></div>
+
+<h3>2.2 NCCL 环境变量速查</h3>
+<table>
+  <tr><th style="width:260px">变量</th><th>作用 / 不设的后果</th></tr>
+  <tr><td><code>NCCL_SOCKET_IFNAME=enp225s0f0</code></td><td><b>bootstrap 与控制通道只走这块 10G 物理网卡。</b>不设则 NCCL 按网卡名排序自动挑，本机会挑中 docker0/cni0 等虚拟网卡 → 双机握手失败或卡死。</td></tr>
+  <tr><td><code>NCCL_IB_HCA=mlx5_0,...,mlx5_7</code></td><td>限定用 8 张 400G mlx5 网卡做跨机数据传输。不设可能选中错误的网口。</td></tr>
+  <tr><td><code>NCCL_IB_GID_INDEX=3</code></td><td>RoCE 网卡一个口有多个 GID（对应不同服务等级/路由），实测 index 3 才是本机房可互通的那个。</td></tr>
+  <tr><td><code>NCCL_IB_DISABLE=0</code></td><td>显式允许使用 IB/RoCE（默认即允许，写出来防止环境里有反向配置）。</td></tr>
+  <tr><td><code>NCCL_NET_GDR_LEVEL=5</code></td><td>开启 GPU Direct RDMA（GPU 显存 ↔ 网卡零拷贝），跨机 AllReduce 吞吐的关键。</td></tr>
+  <tr><td><code>NCCL_P2P_LEVEL=SYS</code> / <code>NCCL_CROSS_NIC=1</code></td><td>允许跨 PCIe/NUMA 的机内 P2P；允许多网卡间负载分担。均为已验证的性能配置。</td></tr>
+  <tr><td><code>NCCL_DEBUG=INFO</code></td><td><b>排查期强烈建议开着</b>：日志会打印每条通道走了哪块网卡/哪种传输（如 <code>via NET/IB/8/GDRDMA</code>），出问题时一眼定位。稳定后可去掉以减少日志量。</td></tr>
+</table>
+
+<h3>2.3 在 192.0.2.20 上把 worker 加入集群</h3>
+<div class="cmd-head"><span class="tag">在 .154（server04）上执行</span></div>
+<pre><code><span class="c"># 同样先进入 vllm 环境（原因同 2.1）</span>
+conda activate vllm
+
+ray stop --force 2&gt;/dev/null
+
+<span class="c"># ★ 同样先 export NCCL 变量（内容和 .153 完全一致）</span>
+export NCCL_DEBUG=INFO \
+       NCCL_IB_DISABLE=0 \
+       NCCL_IB_HCA="mlx5_0,mlx5_1,mlx5_2,mlx5_3,mlx5_4,mlx5_5,mlx5_6,mlx5_7" \
+       NCCL_IB_GID_INDEX=3 \
+       NCCL_SOCKET_IFNAME=enp225s0f0 \
+       NCCL_NET_GDR_LEVEL=5 \
+       NCCL_P2P_LEVEL=SYS \
+       NCCL_CROSS_NIC=1
+
+ray start --address=192.0.2.10:6379 --node-ip-address=192.0.2.20</code></pre>
+<p class="text-muted" style="font-size:13.5px;color:var(--muted)">说明：<code>ray</code> 命令如未激活 conda，可写全路径 <code>/root/anaconda3/envs/vllm/bin/ray</code>。启动时若打印一条 "Unexpected error calculating docker cpuset ids" 的 traceback 属于无害告警，可忽略。</p>
+
+<h3>2.4 验证集群（必须看到 2 节点 / 16 GPU 再往下走）</h3>
+<div class="cmd-head"><span class="tag">在 .153 上执行</span></div>
+<pre><code>ray status</code></pre>
+<pre><code><span class="c"># 期望输出（关键行）：</span>
+Node status
+Active:
+ 1 node_b2df...        <span class="c"># ← .153</span>
+ 1 node_aecf...        <span class="c"># ← .154，两个 node_id 都在才算成功</span>
+Pending:
+ (no pending nodes)
+Recent failures:
+ (no failures)
+
+Resources
+Total Usage:
+ 0.0/448.0 CPU
+ 0.0/16.0 GPU          <span class="c"># ← 必须 16（8+8）</span></code></pre>
+<div class="okbox"><b>通过标准：</b>Active 里有 2 个 node，GPU 总数 16。此时可以继续 §3。</div>
+<div class="errbox"><b>如果只有 1 个 node：</b>worker 没加进来。依次查：① .154 能否 <code>ping 192.0.2.10</code>；② 6379 端口是否被防火墙拦（<code>iptables -L INPUT -n | head</code> 或临时 <code>telnet 192.0.2.10 6379</code>）；③ .154 的 Ray 日志 <code>/tmp/ray/session_latest/logs/</code>（grep "<span style="font-family:Consolas">Failed\|error</span>"）。九成是 IP 绑错或端口不通。</div>
+
+<!-- ================= 3 vLLM ================= -->
+<h2 id="s3"><span class="step-no">3</span>启动 vLLM（只在 .153 上执行）</h2>
+
+<div class="why"><b>为什么只在 head 上敲命令：</b>vLLM 的驱动进程只在 .153 启动一次，它通过 Ray 把 16 个 worker（两台各 8 个）调度起来；.154 上<b>不需要、也不应该</b>手动执行任何 vllm 命令——那样会起一个独立的单机实例，反而占卡冲突。</div>
+
+<h3>3.1 方式一：离线基准测试（推荐重启后先跑这个验证链路）</h3>
+<div class="cmd-head"><span class="tag">在 .153 上执行 · 2026-10-27 实测通过的完整命令</span></div>
+<pre><code>conda activate vllm   <span class="c"># 别在 base 里跑</span>
+
+<span class="c"># NCCL 变量这个 shell 里也 export 一份（覆盖驱动进程本身）</span>
+export NCCL_DEBUG=INFO NCCL_IB_DISABLE=0 \
+       NCCL_IB_HCA="mlx5_0,mlx5_1,mlx5_2,mlx5_3,mlx5_4,mlx5_5,mlx5_6,mlx5_7" \
+       NCCL_IB_GID_INDEX=3 NCCL_SOCKET_IFNAME=enp225s0f0 \
+       NCCL_NET_GDR_LEVEL=5 NCCL_P2P_LEVEL=SYS NCCL_CROSS_NIC=1
+
+vllm bench latency \
+  --model /data/Qwen3-32B \
+  --tensor-parallel-size 16 \
+  --distributed-executor-backend ray \
+  --input-len 1024 --output-len 128 --batch-size 16</code></pre>
+<div class="why"><b>三个关键点：</b>
+<ul style="margin:6px 0 0;padding-left:20px">
+<li><b>子命令必须是 <code>latency</code></b>（或 serve/throughput 等）：<code>vllm bench &lt;模型路径&gt;</code> 这种写法会报 <code>invalid choice</code>，模型要用 <code>--model</code> 传。</li>
+<li><b><code>--distributed-executor-backend ray</code> 不能省</b>：TP=16 大于本机 8 卡，不指定会立刻报 <code>World size (16) is larger than the number of available GPUs (8)</code>。这个参数就是告诉 vLLM"去 Ray 集群找卡，别只在本地找"。</li>
+<li>启动约需 3 分钟（权重加载 27s + 编译/CUDA graph ~2.5min），日志出现 <code>Warming up...</code> 和进度条即正常，耐心等。</li>
+</ul></div>
+
+<h3>3.2 方式二：在线服务（vllm serve）</h3>
+<div class="cmd-head"><span class="tag">在 .153 上执行</span></div>
+<pre><code>vllm serve /data/Qwen3-32B \
+  --served-model-name qwen3 \
+  --host 0.0.0.0 --port 8000 \
+  --max-model-len 32768 \
+  --max-num-seqs 300 \
+  --gpu-memory-utilization 0.85 \
+  --tensor-parallel-size 16 \
+  --distributed-executor-backend ray</code></pre>
+<p>启动完成的标志：日志出现 <code>Uvicorn running on http://0.0.0.0:8000</code> / <code>Application startup complete</code>。</p>
+
+<h3>3.3 验证服务真的跑在双机上</h3>
+<pre><code><span class="c"># 功能验证（任意机器执行）</span>
+curl http://192.0.2.10:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"qwen3","messages":[{"role":"user","content":"你好"}],"max_tokens":50}'
+
+<span class="c"># 双机验证：两台的 GPU 都应该在跑（各 8 张、显存 ~90GB）</span>
+ssh 192.0.2.10 nvidia-smi --query-gpu=index,memory.used --format=csv,noheader
+ssh 192.0.2.20 nvidia-smi --query-gpu=index,memory.used --format=csv,noheader
+
+<span class="c"># 集群资源占用：GPU 应显示 16/16</span>
+ray status</code></pre>
+<div class="why"><b>为什么要看两台 GPU：</b>curl 能出结果只证明服务通了；只有确认 <b>.154 的 8 张卡也加载了权重</b>，才能证明张量并行真的跨机了（否则可能是配置错误退化成了单机）。这是双机验证的"金标准"。</div>
+
+<!-- ================= 4 清理 ================= -->
+<h2 id="s4"><span class="step-no">4</span>停止与清理</h2>
+<div class="cmd-head"><span class="tag">两台都执行</span></div>
+<pre><code><span class="c"># 1. 停 vLLM（在跑 serve/bench 的 .153 上；bench 跑完会自动退出，无需处理）</span>
+pkill -f "vllm serve" ; pkill -f "vllm bench"
+
+<span class="c"># 2. 停 Ray（两台都要）</span>
+ray stop --force
+
+<span class="c"># 3. 确认 GPU 显存归零、无残留进程</span>
+nvidia-smi --query-gpu=index,memory.used --format=csv,noheader
+pgrep -af "raylet|vllm" | grep -v grep</code></pre>
+<div class="warnbox"><b>注意顺序：</b>先停 vLLM 再停 Ray。直接 <code>ray stop</code> 会把 worker 连同引擎一起杀掉，虽然也能停干净，但 vLLM 驱动进程可能留下孤儿进程占着显存，所以停完务必用第 3 步确认显存归零。</div>
+
+<!-- ================= 5 排查 ================= -->
+<h2 id="s5"><span class="step-no">5</span>常见故障排查对照表</h2>
+<table>
+  <tr><th style="width:33%">现象</th><th style="width:30%">原因</th><th>处理</th></tr>
+  <tr>
+    <td><code>ray status</code> 只有 1 个 node</td>
+    <td>worker 没加入：6379 不通 / IP 绑错</td>
+    <td>在 .154 上 <code>telnet 192.0.2.10 6379</code> 测端口；确认两台 <code>ray start</code> 都带了 <code>--node-ip-address</code>；查 <code>/tmp/ray/session_latest/logs/</code></td>
+  </tr>
+  <tr>
+    <td><code>ValueError: World size (16) is larger than the number of available GPUs (8) in this node</code></td>
+    <td>缺 <code>--distributed-executor-backend ray</code></td>
+    <td>加上该参数重跑（见 §3.1）</td>
+  </tr>
+  <tr>
+    <td><code>invalid choice: '/data/Qwen3-32B'</code></td>
+    <td>bench 命令格式不对</td>
+    <td>写成 <code>vllm bench latency --model ...</code>，子命令在前</td>
+  </tr>
+  <tr>
+    <td>卡在 NCCL 初始化，几十分钟无输出不报错</td>
+    <td>worker 进程没拿到 NCCL 变量，选错网卡（虚拟网卡上做 bootstrap）</td>
+    <td>验证：<code>tr '\0' '\n' &lt; /proc/$(pgrep -x raylet|head -1)/environ | grep NCCL</code>。没有就是 export 时机不对——必须<b>在 ray start 之前</b> export，然后 <code>ray stop</code> 重来</td>
+  </tr>
+  <tr>
+    <td>日志出现 <code>No available shared memory broadcast block found in 60 seconds</code></td>
+    <td>某进程在做耗时初始化（编译、量化）</td>
+    <td><b>无害</b>，等待即可</td>
+  </tr>
+  <tr>
+    <td><code>DeepEP v2 requires NCCL &gt;= 2.30.4</code></td>
+    <td>NCCL 2.29.7 低于 DeepEP 要求</td>
+    <td>不影响 Qwen3/DeepSeek-R1 蒸馏版等常规模型，可忽略</td>
+  </tr>
+  <tr>
+    <td><code>ValueError ... docker cpuset ids</code>（ray start 时）</td>
+    <td>Ray 解析 cgroup 的兼容问题</td>
+    <td>无害，忽略</td>
+  </tr>
+  <tr>
+    <td><code>ModuleNotFoundError: No module named 'msgpack'</code></td>
+    <td>在 <code>(base)</code> 环境跑了 ray（base 里的 ray 装得不完整）</td>
+    <td><code>conda activate vllm</code> 后重跑；或用全路径 <code>/root/anaconda3/envs/vllm/bin/ray</code>。注意此时 <code>ray stop</code> 也会同样失败，意味着旧集群根本没停掉</td>
+  </tr>
+  <tr>
+    <td>加载模型时报文件不存在</td>
+    <td>/data 不共享，某台缺模型副本</td>
+    <td>确认两台都有同路径模型目录；新增模型要<b>两台都放</b></td>
+  </tr>
+  <tr>
+    <td>worker 加入后跑任务立刻失败、版本类报错</td>
+    <td>两台 vllm/ray/torch 版本不一致</td>
+    <td>两台分别 <code>pip show vllm ray torch</code> 对齐版本</td>
+  </tr>
+</table>
+
+<!-- ================= 6 原理 ================= -->
+<h2 id="s6"><span class="step-no">6</span>原理详解：为什么必须这样做</h2>
+
+<details open>
+<summary>6.1 为什么 vLLM 双机必须用 Ray，不能用 mpirun？</summary>
+<div style="margin-top:10px">
+<p><b>mpirun 适合的场景</b>（如 nccl-tests 的 all_reduce_perf）：16 个进程彼此完全对等、没有主从，mpirun 只负责把进程拉起来，进程间用 NCCL 自举就能组网。所以你用 mpirun 测 NCCL 是通的——这证明<b>网络层（IB/RoCE、GDRDMA、路由）没有任何问题</b>。</p>
+<p><b>vLLM 的架构不同</b>：它有一个"驱动进程"负责 HTTP 服务、调度、batch 组装，再把算子分发给 16 个 TP worker。驱动与 worker 之间除了 NCCL 数据面，还需要一条<b>控制通道</b>（下发任务、传 KV cache 元数据、收集结果）。这条控制通道由 Ray 提供——包括跨机进程编排、GPU 资源记账（哪台还剩几张卡）、actor 生命周期管理。mpirun 给不了这些，两台各自 <code>vllm serve</code> 也只会变成两个互不相干的单机实例。</p>
+</div>
+</details>
+
+<details>
+<summary>6.2 环境变量的继承链：为什么 export 必须在 ray start 之前</summary>
+<div style="margin-top:10px">
+<p>进程环境变量的继承关系是固定的：</p>
+<pre><code>你的 shell（export NCCL_...）
+   └─ ray start → raylet 守护进程（★ 继承 shell 的环境）
+        └─ RayWorkerProc / vLLM worker（★ 只继承 raylet，不知道你后来的 shell）
+你的另一个 shell（敲 vllm serve/bench）
+   └─ vLLM 驱动进程（继承这个 shell 的环境）</code></pre>
+<p>也就是说：<b>worker 进程的环境来自 raylet 启动那一刻</b>。如果你先 <code>ray start</code>、后 export，那么 .154 上的 8 个 worker 拿不到任何 NCCL 变量，NCCL 会自行挑网卡——在装了 K8s 的机器上大概率挑中虚拟网卡，然后卡死在初始化。这就是"变量顺序"如此重要的原因。验证方法见 §5 第 4 行。</p>
+</div>
+</details>
+
+<details>
+<summary>6.3 为什么要显式指定 node-ip-address：K8s 虚拟网卡的干扰</summary>
+<div style="margin-top:10px">
+<p>两台机器的网络接口远不止物理网卡：<code>kube-ipvs0</code>（30+ 个 Service IP）、<code>flannel.1</code>、<code>cni0</code>、<code>docker0</code>、若干 docker bridge。Ray 和 NCCL 的"自动选 IP/网卡"逻辑在这种机器上不可信：一旦 head 把 <code>10.68.x.x</code> 或 <code>162.30.x.x</code> 这类集群内部地址广播出去，对端根本无法回连。显式指定 <code>--node-ip-address</code>（Ray）和 <code>NCCL_SOCKET_IFNAME</code>（NCCL）就是把选择权从"猜"变成"定"。</p>
+</div>
+</details>
+
+<details>
+<summary>6.4 为什么模型要在两台都有、之前 file:// 方式为什么失败</summary>
+<div style="margin-top:10px">
+<p>① <b>模型双副本</b>：/data 是各自的本地 NVMe（不是 NFS）。Ray 调度 worker 到 .154 时，worker 是<b>在 .154 本地</b>按相同路径读权重——路径两边一致（<code>/data/Qwen3-32B</code>）即可，这比 NFS 更快也避免锁竞争。</p>
+<p>② <b>file:// 初始化失败的原因</b>：早期双机尝试在 /tmp 下留了 <code>vllm_dist_*</code> 文件，这是 PyTorch 分布式 FileStore 的产物——用<b>本地文件</b>当分布式会合点。/tmp 两台不共享，第二台进程永远等不到第一台写入的信息，rendezvous 无限挂起。跨机会合必须走网络（Ray 方案里由 Ray + TCPStore 完成），这就是当时"双机就出问题"的直接原因之一。</p>
+</div>
+</details>
+
+<!-- ================= 7 附录 ================= -->
+<h2 id="s7"><span class="step-no">7</span>附录：2026-10-27 实测记录</h2>
+<div class="card">
+<p><b>测试命令：</b><code>vllm bench latency --model /data/Qwen3-32B --tensor-parallel-size 16 --distributed-executor-backend ray --input-len 1024 --output-len 128 --batch-size 16</code></p>
+<table>
+  <tr><th>指标</th><th>数值</th></tr>
+  <tr><td>集群规模</td><td>2 节点 / 16 GPU（448 CPU，Ray object store 372 GB）</td></tr>
+  <tr><td>引擎初始化耗时</td><td>167.9 s（其中编译 26.6 s，CUDA graph 捕获 47 s）</td></tr>
+  <tr><td>每轮延迟（batch 16 × 输出 128 token）</td><td>平均 4.040 s；P10–P99 = 4.010 ~ 4.093 s（抖动 &lt; 2%）</td></tr>
+  <tr><td>折算解码吞吐</td><td>约 507 token/s（16 × 128 ÷ 4.04）</td></tr>
+  <tr><td>NCCL 证据</td><td><code>nRanks 16 Init COMPLETE</code>；跨机 <code>via NET/IB/GDRDMA</code>；机内 <code>via P2P/CUMEM</code>；<code>Connected all rings, GDR 1</code></td></tr>
+</table>
+<p style="margin-bottom:0;color:var(--muted);font-size:13.5px">测试完成后两机显存归零、无残留进程，验证了完整的启动 → 压测 → 清理生命周期。</p>
+</div>
+
+<footer>
+双机 vLLM 启动指南 · 基于 2026-10-27 在 192.0.2.10 / 192.0.2.20 上的实际验证 ·
+环境：Ubuntu 22.04.5 · Driver 595.71.05 · vLLM 0.29.0 · Ray 2.57.0 · PyTorch 2.13.0+cu130 · NCCL 2.29.7
+</footer>
+
+</div>
+<script>
+document.querySelectorAll("pre").forEach(function(pre){
+  var btn=document.createElement("button");
+  btn.className="copy";btn.type="button";btn.textContent="复制";
+  btn.style.cssText="position:absolute;top:8px;right:8px;";
+  pre.style.position="relative";
+  btn.onclick=function(){
+    var txt=pre.innerText.replace(/^复制\n?/,"");
+    function done(ok){btn.textContent=ok?"已复制":"复制失败";setTimeout(function(){btn.textContent="复制";},1500);}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){done(true)},function(){done(false)});}
+    else{var t=document.createElement("textarea");t.value=txt;document.body.appendChild(t);t.select();try{done(document.execCommand("copy"))}catch(e){done(false)}document.body.removeChild(t);}
+  };
+  pre.appendChild(btn);
+});
+</script>
+</body>
+</html>
